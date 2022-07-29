@@ -15,3 +15,4 @@ making this approach much faster to make changes to the PDF.
 ```sh
 oc port-forward -n crc-pdf-generator svc/crc-pdf-generator-api 8000:8000
 ```
+
