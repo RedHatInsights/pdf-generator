@@ -8,7 +8,6 @@ in the browser just do:
 * `npm start:server`
 This will start the react scripts and will serve just the react app on localhost:8000.
 
-
 This development will not have the header, but the content of the page will be printed identically into the PDF
 making this approach much faster to make changes to the PDF.
 
