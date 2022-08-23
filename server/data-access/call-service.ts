@@ -40,7 +40,7 @@ function prepareServiceCall<T = Record<string, unknown>>(
     if (IS_DEVELOPMENT) {
       data = descriptor.mock();
     } else {
-      data = await axios.get(URL, { ...options, headers });
+      data = await axios({ ...options, url: URL, headers });
     }
     return responseProcessor(data);
   };

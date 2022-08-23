@@ -7,7 +7,10 @@ const responseProcessor = (data: typeof complianceData) => data;
 
 const complianceDescriptor = {
   responseProcessor,
-  path: '/',
+  path: '/api/compliance/graphql',
+  options: {
+    method: 'POST',
+  },
   service: ServiceNames.compliance,
   mock: getMock,
 };
