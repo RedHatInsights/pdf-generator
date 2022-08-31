@@ -76,7 +76,7 @@ parameters:
     value: "http"
   - description: Compliance API hostname
     name: COMPLIANCE_HOST
-    required: true
+    value: "foo"
   - description: Compliance API port
     name: COMPLIANCE_API_PORT
     value: "8000"
