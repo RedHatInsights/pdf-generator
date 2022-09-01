@@ -9,6 +9,8 @@ objects:
       name: crc-pdf-generator
     spec:
       envName: ${ENV_NAME}
+      dependecies:
+      - compliance
       deployments:
         - name: api
           minReplicas: ${{MIN_REPLICAS}}
