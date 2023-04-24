@@ -23,7 +23,7 @@ DOCKER_CONFIG=$DOCKER_CONF docker login -u="$RH_REGISTRY_USER" -p="$RH_REGISTRY_
 DOCKER_CONFIG=$DOCKER_CONF docker build -t "${IMAGE}:${IMAGE_TAG}" .
 DOCKER_CONFIG=$DOCKER_CONF docker push "${IMAGE}:${IMAGE_TAG}"
 
-if [[ $GIT_BRANCH == *"security-compliance"*]]; then
+if [[ $GIT_BRANCH == *"security-compliance"* ]]; then
     docker --config="$DOCKER_CONF" tag "${IMAGE}:${IMAGE_TAG}" "${IMAGE}:security-compliance"
     docker --config="$DOCKER_CONF" push "${IMAGE}:security-compliance"
 else
