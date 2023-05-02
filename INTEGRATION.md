@@ -277,13 +277,13 @@ index 52ac9f5..f122fe3 100644
 
 ## Verifying integration
 
-Before a PR is submitted, it will be required to verify the integration inside ephemenral environment. If you are not familiar with EE, we recommend reading the [documentation](https://consoledot.pages.redhat.com/docs/dev/creating-a-new-app/using-ee/bonfire/getting-started-with-ees.html).
+Before a PR is submitted, it will be required to verify the integration inside ephemenral environment. If you are not familiar with EE, we recommend reading the [documentation](https://consoledot.pages.redhat.com/docs/dev/getting-started/ephemeral/index.html).
 
 ### Quick tips
 
 #### Testing PDF generator API descriptor changes
 
-We recommend building a PDF generator quay image locally and push to your quay repository and in the global bonfire config set the image tag. This way an ephemeral environment will be initialized with your local changes.
+We recommend building a PDF generator quay image locally and push to your quay repository and in the global bonfire config set the image tag. This way an ephemeral environment 2ill be initialized with your local changes.
 
 You can build, tag, and push local images using the following commands:
 

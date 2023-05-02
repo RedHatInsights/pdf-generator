@@ -30,7 +30,7 @@ import {
   global_warning_color_100,
 } from '@patternfly/react-tokens';
 import Page from '../../common/page';
-import { rosExecutiveData } from '../../../server/data-access/rosDescriptor/rosData';
+import rosData from '../../../server/data-access/rosDescriptor/rosData';
 import {
   TableComposable,
   Tbody,
@@ -42,7 +42,6 @@ import {
 import TableLegend from '../../common/components/table-legend';
 import TextWithColorDot from '../../common/components/text-with-color-dot';
 import { InstancesTable } from '../Components/instances-table';
-import { pluralize } from '../utils';
 
 const DescriptionList = ({
   data,
@@ -64,7 +63,15 @@ const DescriptionList = ({
   </Grid>
 );
 
-const RosExecutiveTemplate = ({ data }: { data: typeof rosExecutiveData }) => {
+export const pluralize = (count: number, singular: string, plural?: string) => {
+  if (!plural) {
+    plural = `${singular}s`;
+  }
+
+  return `${count === 1 ? singular : plural}`;
+};
+
+const RosExecutiveTemplate = ({ data }: { data: typeof rosData }) => {
   const {
     conditions: {
       io: { count: ioCount, ...ioConditions },
