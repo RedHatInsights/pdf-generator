@@ -213,6 +213,18 @@ const generatePdf = async ({
 };
 
 // register new worker to pool
-WP.worker({
-  generatePdf,
-});
+WP.worker(
+  {
+    generatePdf,
+  },
+  {
+    onTerminate: function (code) {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          console.log("Inside worker cleanup finished (code = " + code + ")");
+          resolve();
+        }, 500);
+      });
+    },
+  }
+);
