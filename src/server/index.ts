@@ -25,7 +25,7 @@ app.use(
     transports: [new winston.transports.Console()],
     requestWhitelist: ['url', 'method', 'httpVersion', 'originalUrl', 'query'],
     format: winston.format.combine(
-      winston.format.colorize(),
+      winston.format.timestamp(),
       winston.format.json()
     ),
     meta: false,

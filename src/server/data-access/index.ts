@@ -62,7 +62,7 @@ async function getTemplateData(
     return data;
   } else {
     throw new Error(
-      `No API descriptor avaiable for ${templateConfig.service}: ${templateConfig.template}!`
+      `No API descriptor available for ${templateConfig.service}: ${templateConfig.template}!`
     );
   }
 }

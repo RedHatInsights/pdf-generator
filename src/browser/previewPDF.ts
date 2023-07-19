@@ -73,7 +73,7 @@ const previewPdf = async (
       headless: true,
       ...(config?.IS_PRODUCTION
         ? {
-            // we have a different dir structure than pupetter expects. We have to point it to the correct chromium executable
+            // we have a different dir structure than puppeteer expects. We have to point it to the correct chromium executable
             executablePath: CHROMIUM_PATH,
           }
         : {}),
@@ -92,7 +92,7 @@ const previewPdf = async (
       page,
       'customPuppeteerParams',
       JSON.stringify({
-        puppetteerParams: {
+        puppeteerParams: {
           pageWidth,
           pageHeight,
         },
@@ -113,7 +113,7 @@ const previewPdf = async (
 
     if (!pageStatus?.ok()) {
       throw new Error(
-        `Pupeteer error while loading the react app: ${pageStatus?.statusText()}`
+        `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`
       );
     }
 

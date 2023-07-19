@@ -17,6 +17,25 @@ import config from '../common/config';
 
 // 10 minutes cache
 const CACHE_TIMEOUT = 10 * 60 * 10000;
+// String match the 'pid not found' error
+const PID_NOT_FOUND = 'kill ESRCH';
+
+// None of the paths here will hard exit
+const hardClearBrowserProcess = (browser: puppeteer.Browser) => {
+  const pid = browser.process()?.pid;
+  try {
+    process.kill(pid as number, 'SIGKILL');
+    console.log(`Removed ${pid}`);
+  } catch (error) {
+    if (error instanceof Error && error.message == PID_NOT_FOUND) {
+      console.log(`Process ${pid} cleaned up by puppeteer`);
+      return;
+    }
+    console.error(
+      `Unable to remove browser PID ${pid}, zombies might be around : ${error}`
+    );
+  }
+};
 
 const generateCache: {
   [cacheKey: string]: {
@@ -128,7 +147,13 @@ const generatePdf = async ({
             executablePath: CHROMIUM_PATH,
           }
         : {}),
-      args: ['--no-sandbox', '--disable-gpu'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--no-zygote',
+        '--disable-dev-shm-usage',
+      ],
     });
     const page = await browser.newPage();
 
@@ -146,7 +171,7 @@ const generatePdf = async ({
           pageHeight,
         },
       })
-      // }) as undefined // probably a typings issue in pupetter
+      // }) as undefined // probably a typings issue in puppeteer
     );
 
     await page.setExtraHTTPHeaders({
@@ -181,30 +206,37 @@ const generatePdf = async ({
         response = error;
       }
 
+      await browser.close();
       throw response;
     }
     if (!pageStatus?.ok()) {
+      await browser.close();
       throw new Error(
-        `Pupeteer error while loading the react app: ${pageStatus?.statusText()}`
+        `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`
       );
     }
 
     const { headerTemplate, footerTemplate } =
       getHeaderAndFooterTemplates(templateConfig);
 
-    await page.pdf({
-      path: pdfPath,
-      format: 'a4',
-      printBackground: true,
-      margin: browserMargins,
-      displayHeaderFooter: true,
-      headerTemplate,
-      footerTemplate,
-      landscape,
-    });
-
-    await browser.close();
-    return pdfPath;
+    try {
+      await page.pdf({
+        path: pdfPath,
+        format: 'a4',
+        printBackground: true,
+        margin: browserMargins,
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
+        landscape,
+      });
+      await browser.close();
+      return pdfPath;
+    } catch (error) {
+      throw new Error(`PDF could not be generated : ${error}`);
+    } finally {
+      hardClearBrowserProcess(browser);
+    }
   };
 
   const promiseLock = createFilename();

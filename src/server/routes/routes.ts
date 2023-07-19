@@ -33,7 +33,7 @@ export type HelloHandlerRequest = Request<
   { policyId: string; totalHostCount: number }
 >;
 
-export type PupetterBrowserRequest = Request<
+export type PuppeteerBrowserRequest = Request<
   unknown,
   unknown,
   unknown,
@@ -42,9 +42,9 @@ export type PupetterBrowserRequest = Request<
 
 const router = Router();
 
-// Middlware that activates on all routes, responsible for rendering the correct
+// Middleware that activates on all routes, responsible for rendering the correct
 // template/component into html to the requester.
-router.use('^/$', async (req: PupetterBrowserRequest, res, _next) => {
+router.use('^/$', async (req: PuppeteerBrowserRequest, res, _next) => {
   let service: ServiceNames = req.query.service;
   let template: string = req.query.template;
   if (!service) {
