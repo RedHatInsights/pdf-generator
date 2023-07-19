@@ -152,7 +152,7 @@ const generatePdf = async ({
         '--disable-setuid-sandbox',
         '--disable-gpu',
         '--no-zygote',
-        '--disable-dev-shm-usage',
+        // '--disable-dev-shm-usage',
       ],
     });
     const page = await browser.newPage();
