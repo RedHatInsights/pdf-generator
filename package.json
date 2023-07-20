@@ -27,6 +27,7 @@
     "fs-extra": "^10.1.0",
     "glob": "^8.0.3",
     "ignore-styles": "^5.0.1",
+    "playwright": "^1.36.1",
     "prom-client": "^14.1.0",
     "puppeteer": "^17.1.1",
     "react": "^17.0.2",

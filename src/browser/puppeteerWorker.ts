@@ -1,5 +1,5 @@
-import WP from 'workerpool';
-import puppeteer from 'puppeteer';
+// import WP from 'workerpool';
+// import puppeteer from 'puppeteer';
 import { v4 as uuidv4 } from 'uuid';
 import fse from 'fs-extra';
 import os from 'os';
@@ -10,32 +10,33 @@ import {
   getViewportConfig,
   pageHeight,
   pageWidth,
-  setWindowProperty,
+  // setWindowProperty,
 } from './helpers';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import config from '../common/config';
+import { chromium } from 'playwright';
 
 // 10 minutes cache
 const CACHE_TIMEOUT = 10 * 60 * 10000;
 // String match the 'pid not found' error
-const PID_NOT_FOUND = 'kill ESRCH';
+// const PID_NOT_FOUND = 'kill ESRCH';
 
 // None of the paths here will hard exit
-const hardClearBrowserProcess = (browser: puppeteer.Browser) => {
-  const pid = browser.process()?.pid;
-  try {
-    process.kill(pid as number, 'SIGKILL');
-    console.log(`Removed ${pid}`);
-  } catch (error) {
-    if (error instanceof Error && error.message == PID_NOT_FOUND) {
-      console.log(`Process ${pid} cleaned up by puppeteer`);
-      return;
-    }
-    console.error(
-      `Unable to remove browser PID ${pid}, zombies might be around : ${error}`
-    );
-  }
-};
+// const hardClearBrowserProcess = (browser: puppeteer.Browser) => {
+//   const pid = browser.process()?.pid;
+//   try {
+//     process.kill(pid as number, 'SIGKILL');
+//     console.log(`Removed ${pid}`);
+//   } catch (error) {
+//     if (error instanceof Error && error.message == PID_NOT_FOUND) {
+//       console.log(`Process ${pid} cleaned up by puppeteer`);
+//       return;
+//     }
+//     console.error(
+//       `Unable to remove browser PID ${pid}, zombies might be around : ${error}`
+//     );
+//   }
+// };
 
 const generateCache: {
   [cacheKey: string]: {
@@ -101,7 +102,7 @@ const getNewPdfName = () => {
   return `${os.tmpdir()}/${pdfFilename}`;
 };
 
-const generatePdf = async ({
+export const GeneratePdf = async ({
   url,
   rhIdentity,
   templateConfig,
@@ -110,7 +111,6 @@ const generatePdf = async ({
 }: {
   url: string;
   templateConfig: TemplateConfig;
-  templateData: Record<string, unknown>;
   orientationOption?: boolean;
   rhIdentity: string;
   dataOptions: Record<string, any>;
@@ -139,7 +139,7 @@ const generatePdf = async ({
       templateConfig,
       orientationOption
     );
-    const browser = await puppeteer.launch({
+    const browser = await chromium.launch({
       headless: true,
       ...(config?.IS_PRODUCTION
         ? {
@@ -152,27 +152,27 @@ const generatePdf = async ({
         '--disable-setuid-sandbox',
         '--disable-gpu',
         '--no-zygote',
-        // '--disable-dev-shm-usage',
+        '--disable-dev-shm-usage',
       ],
     });
     const page = await browser.newPage();
 
-    await page.setViewport({ width: pageWidth, height: pageHeight });
+    await page.setViewportSize({ width: pageWidth, height: pageHeight });
 
     // Enables console logging in Headless mode - handy for debugging components
     page.on('console', (msg) => console.log(`[Headless log] ${msg.text()}`));
 
-    await setWindowProperty(
-      page,
-      'customPuppeteerParams',
-      JSON.stringify({
-        puppeteerParams: {
-          pageWidth,
-          pageHeight,
-        },
-      })
-      // }) as undefined // probably a typings issue in puppeteer
-    );
+    // await setWindowProperty(
+    //   page,
+    //   'customPuppeteerParams',
+    //   JSON.stringify({
+    //     puppeteerParams: {
+    //       pageWidth,
+    //       pageHeight,
+    //     },
+    //   })
+    //   // }) as undefined // probably a typings issue in puppeteer
+    // );
 
     await page.setExtraHTTPHeaders({
       ...(dataOptions
@@ -186,7 +186,7 @@ const generatePdf = async ({
         ? {}
         : { 'x-rh-identity': rhIdentity }),
     });
-    const pageStatus = await page.goto(url, { waitUntil: 'networkidle2' });
+    const pageStatus = await page.goto(url, { waitUntil: 'networkidle' });
     // get the error from DOM if it exists
     const error = await page.evaluate(() => {
       const elem = document.getElementById('error');
@@ -230,13 +230,15 @@ const generatePdf = async ({
         footerTemplate,
         landscape,
       });
+      // await page.close();
       await browser.close();
       return pdfPath;
     } catch (error) {
       throw new Error(`PDF could not be generated : ${error}`);
-    } finally {
-      hardClearBrowserProcess(browser);
     }
+    // } finally {
+    //   hardClearBrowserProcess(browser);
+    // }
   };
 
   const promiseLock = createFilename();
@@ -244,7 +246,7 @@ const generatePdf = async ({
   return promiseLock;
 };
 
-// register new worker to pool
-WP.worker({
-  generatePdf,
-});
+// // register new worker to pool
+// WP.worker({
+//   generatePdf,
+// });

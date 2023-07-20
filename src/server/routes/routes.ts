@@ -10,7 +10,7 @@ import { SendingFailedError, PDFNotFoundError } from '../errors';
 import config from '../../common/config';
 import { PreviewReqBody, PreviewReqQuery } from '../../common/types';
 import previewPdf from '../../browser/previewPDF';
-import pool from '../workers';
+import { GeneratePdf } from '../../browser/puppeteerWorker';
 
 export type PreviewHandlerRequest = Request<
   unknown,
@@ -103,23 +103,31 @@ router.post(
     const url = `http://localhost:${config?.webPort}?template=${template}&service=${service}`;
 
     try {
+      const pathToPdf = await GeneratePdf({
+        url,
+        rhIdentity,
+        templateConfig: { service, template },
+        orientationOption,
+        dataOptions,
+      });
+
       // Generate the pdf
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const pathToPdf = await pool.exec<(...args: any[]) => string>(
-        'generatePdf',
-        [
-          {
-            url,
-            rhIdentity,
-            templateConfig: {
-              service,
-              template,
-            },
-            orientationOption,
-            dataOptions,
-          },
-        ]
-      );
+      // const pathToPdf = await pool.exec<(...args: any[]) => string>(
+      //   'generatePdf',
+      //   [
+      //     {
+      //       url,
+      //       rhIdentity,
+      //       templateConfig: {
+      //         service,
+      //         template,
+      //       },
+      //       orientationOption,
+      //       dataOptions,
+      //     },
+      //   ]
+      // );
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const pdfFileName = pathToPdf.split('/').pop();

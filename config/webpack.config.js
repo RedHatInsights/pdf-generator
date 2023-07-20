@@ -119,10 +119,17 @@ const serverConfig = {
   externals: {
     // puppeteer cannot be bundled via webpack. It will break the rendering. Pupetter will be loaded via node_modules even in prod version
     puppeteer: "require('puppeteer')",
+    playwright: "require('playwright')"
   },
   module: {
     rules: [
       { test: /\.(js|tsx?)$/, loader: 'ts-loader', exclude: /node_modules/ },
+      {
+        test: /codicon\.ttf$/,
+        use: [{
+            loader: "ignore-loader"
+        }]
+      },
       {
         test: /\.s?[ac]ss$/,
         use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
