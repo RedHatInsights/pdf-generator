@@ -10,7 +10,7 @@ import { SendingFailedError, PDFNotFoundError } from '../errors';
 import config from '../../common/config';
 import { PreviewReqBody, PreviewReqQuery } from '../../common/types';
 import previewPdf from '../../browser/previewPDF';
-import { GeneratePdf } from '../../browser/puppeteerWorker';
+import pool from '../workers';
 
 export type PreviewHandlerRequest = Request<
   unknown,
@@ -103,31 +103,23 @@ router.post(
     const url = `http://localhost:${config?.webPort}?template=${template}&service=${service}`;
 
     try {
-      const pathToPdf = await GeneratePdf({
-        url,
-        rhIdentity,
-        templateConfig: { service, template },
-        orientationOption,
-        dataOptions,
-      });
-
       // Generate the pdf
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      // const pathToPdf = await pool.exec<(...args: any[]) => string>(
-      //   'generatePdf',
-      //   [
-      //     {
-      //       url,
-      //       rhIdentity,
-      //       templateConfig: {
-      //         service,
-      //         template,
-      //       },
-      //       orientationOption,
-      //       dataOptions,
-      //     },
-      //   ]
-      // );
+      const pathToPdf = await pool.exec<(...args: any[]) => string>(
+        'generatePdf',
+        [
+          {
+            url,
+            rhIdentity,
+            templateConfig: {
+              service,
+              template,
+            },
+            orientationOption,
+            dataOptions,
+          },
+        ]
+      );
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const pdfFileName = pathToPdf.split('/').pop();
@@ -158,11 +150,11 @@ router.post(
           {
             status: 500,
             statusText: 'Internal server error',
-            description: error,
+            description: error.message,
           },
         ],
       });
-      next(`There was an error while generating a report: ${error}`);
+      next(`There was an error while generating a report: ${error.message}`);
     }
   }
 );

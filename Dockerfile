@@ -9,8 +9,8 @@ RUN mkdir -p /pdf-gen/bin
 # RUN npm install using package-lock.json
 RUN npm ci
 # Install the chromium locally if necessary.
-RUN node node_modules/playwright/install.js
-# RUN chmod -R o+rwx node_modules/playwright/.local-chromium
+RUN node node_modules/puppeteer/install.js
+RUN chmod -R o+rwx node_modules/puppeteer/.local-chromium
 
 # Check for circular dependencies
 RUN node circular.js
