@@ -26,6 +26,7 @@ cat << EOF > $WORKSPACE/artifacts/junit-dummy.xml
 </testsuite>
 EOF
 
+# Test
 source $CICD_ROOT/build.sh
 # temporarily exit early to sucesfully deploy the image to quay
 exit 0
