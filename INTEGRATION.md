@@ -283,7 +283,7 @@ Before a PR is submitted, it will be required to verify the integration inside e
 
 #### Testing PDF generator API descriptor changes
 
-We recommend building a PDF generator quay image locally and push to your quay repository and in the global bonfire config set the image tag. This way an ephemeral environment will be initialized with your local changes.
+We recommend building a PDF generator quay image locally and push to your quay repository and in the global bonfire config set the image tag. This way an ephemeral environment 2ill be initialized with your local changes.
 
 You can build, tag, and push local images using the following commands:
 

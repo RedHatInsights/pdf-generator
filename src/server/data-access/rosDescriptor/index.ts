@@ -1,16 +1,14 @@
 import { ServiceCallFunction, ServiceDescriptor } from '../call-service';
 import ServiceNames from '../../../common/service-names';
 import config from '../../../common/config';
-import { rosExecutiveData, rosSystemFilters, rosSystemsData } from './rosData';
+import rosData from './rosData';
 import axios, { AxiosRequestHeaders } from 'axios';
-import QueryString from 'qs';
 
 const BASE_URL = `http://${config?.endpoints['ros-backend']?.hostname}:${config?.endpoints['ros-backend']?.port}/api/ros/v1`;
 const EXECUTIVE_REPORT_URL = `${BASE_URL}/executive_report`;
-const SYSTEMS_URL = `${BASE_URL}/systems`;
 
 const getExecutiveReport = async (headers: AxiosRequestHeaders) => {
-  const { data } = await axios.get<{ data: typeof rosExecutiveData }>(
+  const { data } = await axios.get<{ data: typeof rosData }>(
     EXECUTIVE_REPORT_URL,
     {
       headers,
@@ -53,17 +51,10 @@ const rosDescriptor: ServiceDescriptor = {
   templates: {
     executiveReport: {
       service: ServiceNames.ros,
-      responseProcessor: executiveResponseProcessor,
+      responseProcessor,
       path: '/',
       request: getExecutiveReport,
-      mock: executiveGetMock,
-    },
-    systemsReport: {
-      service: ServiceNames.ros,
-      responseProcessor: systemsResponseProcessor,
-      path: '/',
-      request: getSystemsReport,
-      mock: systemsGetMock,
+      mock: getMock,
     },
   },
 };
