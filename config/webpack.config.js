@@ -9,7 +9,6 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const { merge } = require('webpack-merge');
-const searchIgnoredStyles = require('./search-ignored-styles');
 
 // call default generator then pair different variations of uri with each base
 const myGenerator = asGenerator((item, ...rest) => {
@@ -40,7 +39,7 @@ const baseConfig = {
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
     alias: {
-      ...searchIgnoredStyles(path.resolve(__dirname, '../')),
+      // ...searchIgnoredStyles(path.resolve(__dirname, '../')),
     },
   },
 };
@@ -105,10 +104,16 @@ const serverConfig = {
         /Critical\sdependency:\sthe\srequest\sof\sa\sdependency\sis\san\sexpression/,
     },
   ],
-  entry: path.resolve(__dirname, '../src/server/index.ts'),
+  entry: {
+    server: path.resolve(__dirname, '../src/server/index.ts'),
+    puppeteerWorker: {
+      import: path.resolve(__dirname, '../src/browser/puppeteerWorker.ts'),
+      chunkLoading: false,
+    },
+  },
   output: {
     path: path.resolve(__dirname, '../dist'),
-    filename: 'index.js',
+    filename: '[name].js',
     publicPath: './', // file-loader prepends publicPath to the emited url. without this, react will complain about server and client mismatch
   },
   externals: {
@@ -120,7 +125,7 @@ const serverConfig = {
       { test: /\.(js|tsx?)$/, loader: 'ts-loader', exclude: /node_modules/ },
       {
         test: /\.s?[ac]ss$/,
-        use: ['css-loader', 'sass-loader'],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
       },
       {
         // file-loader config must match client's (except 'emitFile' property)
@@ -142,6 +147,9 @@ const serverConfig = {
     }),
     new DefinePlugin({
       __Server__: JSON.stringify(true),
+    }),
+    new MiniCssExtractPlugin({
+      filename: '../public/[name].css',
     }),
   ],
 };

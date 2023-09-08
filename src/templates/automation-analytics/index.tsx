@@ -4,7 +4,7 @@ import App from './App';
 
 // For local development with `npm start`
 const params =
-  window.customPupeteerParams ??
+  window.customPuppeteerParams ??
   JSON.stringify({
     data: {
       response_type: 'jobs_by_date_and_template',

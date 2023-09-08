@@ -277,7 +277,7 @@ index 52ac9f5..f122fe3 100644
 
 ## Verifying integration
 
-Before a PR is submitted, it will be required to verify the integration inside ephemenral environment. If you are not familiar with EE, we recommend reading the [documentation](https://consoledot.pages.redhat.com/docs/dev/getting-started/ephemeral/index.html).
+Before a PR is submitted, it will be required to verify the integration inside ephemenral environment. If you are not familiar with EE, we recommend reading the [documentation]([https://consoledot.pages.redhat.com/docs/dev/creating-a-new-app/using-ee/bonfire/getting-started-with-ees.html](https://consoledot.pages.redhat.com/docs/dev/creating-a-new-app/using-ee/getting-started-with-ees.html)).
 
 ### Quick tips
 

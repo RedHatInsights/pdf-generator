@@ -1,15 +1,18 @@
 import fs from 'fs';
 import { Router, Request } from 'express';
 import httpContext from 'express-http-context';
-
 import getTemplateData from '../data-access';
 import ServiceNames from '../../common/service-names';
 import renderTemplate from '../render-template';
-import { processOrientationOption } from '../../browser/helpers';
-import generatePdf, { previewPdf } from '../../browser';
+import {
+  processOrientationOption,
+  TemplateConfig,
+} from '../../browser/helpers';
 import { SendingFailedError, PDFNotFoundError } from '../errors';
 import config from '../../common/config';
 import { PreviewReqBody, PreviewReqQuery } from '../../common/types';
+import previewPdf from '../../browser/previewPDF';
+import pool from '../workers';
 
 export type PreviewHandlerRequest = Request<
   unknown,
@@ -32,18 +35,49 @@ export type HelloHandlerRequest = Request<
   { policyId: string; totalHostCount: number }
 >;
 
-export type PupetterBrowserRequest = Request<
+export type PuppeteerBrowserRequest = Request<
   unknown,
   unknown,
   unknown,
   { service: ServiceNames; template: string }
 >;
 
+export type PdfRequestBody = {
+  url: string;
+  templateConfig: TemplateConfig;
+  templateData?: Record<string, unknown>;
+  orientationOption?: boolean;
+  rhIdentity: string;
+  dataOptions: Record<string, any>;
+};
+
 const router = Router();
 
-// Middlware that activates on all routes, responsible for rendering the correct
+function getPdfRequestBody(
+  config: any,
+  req: GenerateHandlerRequest
+): PdfRequestBody {
+  const rhIdentity = httpContext.get(config?.IDENTITY_HEADER_KEY as string);
+  const orientationOption = processOrientationOption(req);
+  const service = req.body.service;
+  const template = req.body.template;
+  const dataOptions = req.body;
+  const url = `http://localhost:${config?.webPort}?template=${template}&service=${service}`;
+  return {
+    url,
+    rhIdentity,
+    templateConfig: {
+      service,
+      template,
+    },
+    orientationOption,
+    dataOptions,
+  };
+}
+
+// Middleware that activates on all routes, responsible for rendering the correct
 // template/component into html to the requester.
-router.use('^/$', async (req: PupetterBrowserRequest, res, _next) => {
+router.use('^/$', async (req: PuppeteerBrowserRequest, res, _next) => {
   let service: ServiceNames = req.query.service;
   let template: string = req.query.template;
   if (!service) {
@@ -80,9 +114,9 @@ router.use('^/$', async (req: PupetterBrowserRequest, res, _next) => {
   } catch (error) {
     // render error to DOM to retrieve the error content from puppeteer
     res.send(
-      `<div id="error" data-error="${JSON.stringify(error)}">${JSON.stringify(
+      `<div id="report-error" data-error="${JSON.stringify(
         error
-      )}</div>`
+      )}">${error}</div>`
     );
   }
 });
@@ -93,25 +127,14 @@ router.get(`${config?.APIPrefix}/hello`, (_req, res) => {
 
 router.post(
   `${config?.APIPrefix}/generate`,
-  async (req: GenerateHandlerRequest, res) => {
-    const rhIdentity = httpContext.get(config?.IDENTITY_HEADER_KEY as string);
-    const orientationOption = processOrientationOption(req);
-    const service = req.body.service;
-    const template = req.body.template;
-    const dataOptions = req.body;
-    const url = `http://localhost:${config?.webPort}?template=${template}&service=${service}`;
+  async (req: GenerateHandlerRequest, res, next) => {
+    const pdfDetails = getPdfRequestBody(config, req);
+    console.log(pool.stats());
 
     try {
-      // Generate the pdf
-      const pathToPdf = await generatePdf(
-        url,
-        rhIdentity,
-        {
-          service,
-          template,
-        },
-        orientationOption,
-        dataOptions
+      const pathToPdf = await pool.exec<(...args: any[]) => string>(
+        'generatePdf',
+        [pdfDetails]
       );
 
       const pdfFileName = pathToPdf.split('/').pop();
@@ -119,32 +142,52 @@ router.post(
       if (!fs.existsSync(pathToPdf)) {
         throw new PDFNotFoundError(pdfFileName as string);
       }
-
-      res.status(200).sendFile(pathToPdf, (err) => {
+      return res.status(200).sendFile(pathToPdf, (err) => {
         if (err) {
           const errorMessage = new SendingFailedError(
             pdfFileName as string,
             err
           );
-          throw errorMessage;
+          res.status(500).send({
+            error: {
+              status: 500,
+              statusText: 'PDF was generated, but could not be sent',
+              description: `${errorMessage}`,
+            },
+          });
         }
-
-        fs.unlink(pathToPdf, (err) => {
-          if (err) {
-            console.info('warn', `Failed to unlink ${pdfFileName}: ${err}`);
-          }
-        });
       });
-    } catch (error: unknown) {
-      res.status(500).send({
-        errors: [
-          {
+    } catch (error: any) {
+      const errStr = `${error}`;
+      if (errStr.includes('No API descriptor')) {
+        res.status(400).send({
+          error: {
+            status: 400,
+            statusText: 'Bad Request',
+            description: `${error}`,
+          },
+        });
+      } else {
+        res.status(500).send({
+          error: {
             status: 500,
             statusText: 'Internal server error',
-            description: error,
+            description: `${error}`,
           },
-        ],
-      });
+        });
+      }
+      next(`There was an error while generating a report: ${error}`);
+    } finally {
+      // To handle the edge case where a pool terminates while the queue isn't empty,
+      // we ensure that the queue is empty and all workers are idle.
+      const stats = pool.stats();
+      console.log(stats);
+      if (
+        stats.pendingTasks === 0 &&
+        stats.totalWorkers === stats.idleWorkers
+      ) {
+        await pool.terminate();
+      }
     }
   }
 );
@@ -172,6 +215,7 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
   const orientationOption = processOrientationOption(req);
 
   const url = `http://localhost:${config?.webPort}?service=${service}&template=${template}`;
+
   try {
     const pdfBuffer = await previewPdf(
       url,
@@ -197,6 +241,19 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
 
 router.get('/healthz', (_req, res, _next) => {
   return res.status(200).send('Build assets available');
+});
+
+router.get(`${config?.APIPrefix}/openapi.json`, (_req, res, _next) => {
+  fs.readFile('./docs/openapi.json', 'utf8', (err, data) => {
+    if (err) {
+      console.error(err);
+      return res
+        .status(500)
+        .send(`An error occurred while fetching the OpenAPI spec : ${err}`);
+    } else {
+      return res.json(JSON.parse(data));
+    }
+  });
 });
 
 export default router;

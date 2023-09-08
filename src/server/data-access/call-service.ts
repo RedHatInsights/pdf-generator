@@ -29,7 +29,7 @@ const getServiceEndpointMap = (
 ): keyof ServicesEndpoints => {
   const services = {
     [ServiceNames.compliance]: ServiceNames.compliance,
-    // // advisor does not have matching names
+    // advisor does not have matching names
     [ServiceNames.advisor]: 'advisor-backend',
     [ServiceNames.vulnerability]: ServiceNames.vulnerability,
     [ServiceNames.demo]: ServiceNames.demo,
@@ -42,13 +42,15 @@ function prepareServiceCall<T = Record<string, unknown>>(
   descriptor: APIDescriptor<T>
 ): ServiceCallFunction {
   if (config?.IS_DEVELOPMENT && descriptor?.mock) {
-    return () => Promise.resolve(descriptor.mock());
+    return (headers, options) =>
+      Promise.resolve(descriptor.mock(headers, options));
   }
+
   const { service, path, responseProcessor, request } = descriptor || {};
   const serviceConfig = config?.endpoints[getServiceEndpointMap(service)];
   if (!config?.IS_DEVELOPMENT && !serviceConfig) {
     return () =>
-      Promise.reject(`Trying to reach unusupported service ${service}!`);
+      Promise.reject(`Trying to reach unsupported service ${service}!`);
   }
 
   if (request) {

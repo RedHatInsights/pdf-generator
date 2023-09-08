@@ -11,7 +11,7 @@ async function runTests() {
   console.log('Test build ready');
 
   console.log('Starting test server');
-  subprocess = spawn('node', ['./dist/index.js'], {
+  subprocess = spawn('node', ['./dist/server.js'], {
     stdio: [process.stdout, process.stdout, process.stdout],
     detached: true,
   });
@@ -26,6 +26,6 @@ try {
   subprocess.kill();
   process.exit(1);
 } finally {
-  subprocess.kill();
+  subprocess?.kill();
   process.exit(0);
 }
