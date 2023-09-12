@@ -11,7 +11,7 @@ interface Props {
   extraData?: ApiReturnType;
   schemaParams?: SchemaParams;
   chartSeriesHiddenProps?: boolean[];
-  puppeteerParams?: {
+  pupeteerParams?: {
     pageWidth: number;
     pageHeight: number;
   };
@@ -23,7 +23,7 @@ const App: FC<Props> = ({
   extraData,
   schemaParams,
   chartSeriesHiddenProps,
-  puppeteerParams,
+  pupeteerParams,
 }) => {
   const report = getReport({
     slug,
@@ -45,7 +45,7 @@ const App: FC<Props> = ({
 
   return (
     <PageOptionsContext.Provider
-      value={{ ...puppeteerParams, chartSeriesHiddenProps }}
+      value={{ ...pupeteerParams, chartSeriesHiddenProps }}
     >
       {returnReport()}
     </PageOptionsContext.Provider>

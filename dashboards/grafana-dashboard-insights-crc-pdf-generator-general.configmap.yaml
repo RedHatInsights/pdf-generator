@@ -1,7 +1,6 @@
----
 apiVersion: v1
 data:
-  general.json: |-
+  general.json: |- 
     {
       "annotations": {
         "list": [
@@ -28,7 +27,8 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 151560,
+      "id": 534,
+      "iteration": 1662462839506,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -43,28 +43,16 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
-              "mappings": [
-                {
-                  "options": {
-                    "NaN": {
-                      "color": "green",
-                      "index": 0,
-                      "text": "100"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": null
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 90
                   }
                 ]
@@ -92,16 +80,14 @@ data:
             "showThresholdLabels": false,
             "showThresholdMarkers": true
           },
-          "pluginVersion": "9.3.8",
+          "pluginVersion": "9.0.3",
           "targets": [
             {
               "datasource": {
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "editorMode": "code",
               "expr": "round(sum(rate(api_3scale_gateway_api_status{exported_service=\"crc-pdf-generator\", status=~\"[234]xx\"}[24h])) \n    /\n    sum(rate(api_3scale_gateway_api_status{exported_service=\"crc-pdf-generator\"}[24h])), 0.0001)",
-              "range": true,
               "refId": "A"
             }
           ],
@@ -119,8 +105,6 @@ data:
                 "mode": "palette-classic"
               },
               "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
                 "axisLabel": "",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
@@ -177,8 +161,7 @@ data:
             "legend": {
               "calcs": [],
               "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
+              "placement": "bottom"
             },
             "tooltip": {
               "mode": "single",
@@ -212,29 +195,18 @@ data:
                 "mode": "thresholds"
               },
               "decimals": 2,
-              "mappings": [
-                {
-                  "options": {
-                    "NaN": {
-                      "color": "green",
-                      "index": 0,
-                      "text": "100"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "mappings": [],
               "max": 1,
               "min": 0,
               "thresholds": {
-                "mode": "percentage",
+                "mode": "absolute",
                 "steps": [
                   {
-                    "color": "red",
+                    "color": "green",
                     "value": null
                   },
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": 90
                   }
                 ]
@@ -262,7 +234,7 @@ data:
             "showThresholdLabels": false,
             "showThresholdMarkers": true
           },
-          "pluginVersion": "9.3.8",
+          "pluginVersion": "9.0.3",
           "targets": [
             {
               "datasource": {
@@ -280,7 +252,7 @@ data:
           "type": "gauge"
         }
       ],
-      "schemaVersion": 37,
+      "schemaVersion": 36,
       "style": "dark",
       "tags": [],
       "templating": {
@@ -314,7 +286,7 @@ data:
       "timezone": "",
       "title": "CRC PDF generator stage",
       "uid": "XSuKR5MVk",
-      "version": 4,
+      "version": 3,
       "weekStart": ""
     }
 kind: ConfigMap

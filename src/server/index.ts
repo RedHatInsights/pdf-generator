@@ -3,7 +3,6 @@ import path from 'path';
 import cors from 'cors';
 import promBundle from 'express-prom-bundle';
 import httpContext from 'express-http-context';
-import http from 'http';
 
 import winston from 'winston';
 import { LoggerOptionsWithTransports } from 'express-winston';
@@ -25,7 +24,7 @@ app.use(
     transports: [new winston.transports.Console()],
     requestWhitelist: ['url', 'method', 'httpVersion', 'originalUrl', 'query'],
     format: winston.format.combine(
-      winston.format.timestamp(),
+      winston.format.colorize(),
       winston.format.json()
     ),
     meta: false,
@@ -38,13 +37,7 @@ app.use(httpContext.middleware);
 app.use(identityMiddleware);
 app.use('/', router);
 
-const server = http.createServer({}, app).listen(PORT, () => {
-  console.info('info', `Listening on port ${PORT}`);
-});
-
-// setup keep alive timeout
-server.keepAliveTimeout = 60 * 1000 + 1000; // 61 s
-server.keepAliveTimeout = 60 * 1000 + 2000; // 62 s
+app.listen(PORT, () => console.info('info', `Listening on port ${PORT}`));
 
 const metricsApp = express();
 

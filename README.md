@@ -69,20 +69,14 @@ fetch('/api/crc-pdf-generator/v1/generate', {
   },
 
   body: JSON.stringify({
-      // service and template params are mandatory
-      service: 'ros',
-      template: 'executiveReport',
-      // ... any other config options accepted by your template
-    }),
-  })
-  .then(async (response) => {
-    if (response.ok === false) {
-      const res = await response.json()
-      console.log(`PDF failed to generate: ${res.error.description}`)
-      throw new Error(`PDF failed to generate: ${res.error.description}`)
-    }
-    return response.blob()
-  })
+    // service and template params are mandatory
+    service: 'ros',
+    template: 'executiveReport',
+    // ... any other config options accepted by your template
+  }),
+})
+  // If you are using fetch, don't forget to handle the response.ok === false branch before calling response.blob()!
+  .then((response) => response.blob())
   .then((blob) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -96,4 +90,4 @@ fetch('/api/crc-pdf-generator/v1/generate', {
 
 ```
 
-The PDF file will be downloaded in the browser.
+The PDF file will be downloaded b the browser.

@@ -3,7 +3,7 @@ import CommonHeader from './common/common-header';
 import CommonFooter from './common/common-footer';
 import VulnerabilitiesSystemTemplate from './vulnerability/vulnerabilities-system/Template';
 import ServiceNames from '../common/service-names';
-import VulnerabilityTemplate from './vulnerability/advanced-cve-report/Template';
+import VulnerabilityTemplate from './vulnerability/executive-report/Template';
 import VulnerabilityExecutiveReportTemplate from './vulnerability/executive-report/Template';
 import AdvisorTemplate from './advisor/Template';
 import ComplianceTemplate from './compliance/template';
@@ -50,7 +50,6 @@ const templates: TemplateMapper = {
   [ServiceNames.vulnerability]: {
     vulnerabilities: {
       template: VulnerabilityTemplate,
-      landscape: true,
       header: CommonHeader,
       footer: CommonFooter,
     },

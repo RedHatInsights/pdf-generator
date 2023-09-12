@@ -8,9 +8,9 @@ const getMock: ServiceCallFunction = () => Promise.resolve(complianceData);
 const responseProcessor = (data: typeof complianceData) => data;
 
 const getPolicyQuery = {
-  operationName: 'PDFG_Profile',
+  operationName: 'Profile',
   query: `
-  query PDFG_Profile($policyId: String!) {
+  query Profile($policyId: String!) {
     profile(id: $policyId) {
       id
       name
@@ -40,9 +40,9 @@ const getPolicyQuery = {
 };
 
 const getRulesQuery = {
-  operationName: 'PDFG_Profiles',
+  operationName: 'getProfiles',
   query: `
-  query PDFG_Profiles($filter: String!, $policyId: ID!) {
+  query getProfiles($filter: String!, $policyId: ID!) {
     profiles(search: $filter) {
       totalCount
       edges {
@@ -63,9 +63,9 @@ const getRulesQuery = {
 };
 
 const getSystemsQuery = {
-  operationName: 'PDFG_Systems',
+  operationName: 'getSystems',
   query: `
-  query PDFG_Systems(
+  query getSystems(
     $filter: String!
     $policyId: ID
     $perPage: Int

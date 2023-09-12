@@ -17,35 +17,8 @@ const getExecutiveReport = async (headers: AxiosRequestHeaders) => {
   return { data };
 };
 
-const getSystemsReport = async (
-  headers: AxiosRequestHeaders,
-  { params }: Record<string, any>
-) => {
-  const defaultParams = {
-    order_by: 'report_date',
-    order_how: 'desc',
-    limit: -1,
-    ...params,
-  };
-
-  const { data } = await axios.get(SYSTEMS_URL, {
-    headers,
-    params: defaultParams,
-    paramsSerializer: (params) =>
-      QueryString.stringify(params, { arrayFormat: 'repeat' }),
-  });
-
-  return { data, filters: params };
-};
-
-const executiveGetMock: ServiceCallFunction = () =>
-  Promise.resolve({ data: rosExecutiveData });
-const executiveResponseProcessor = (data: typeof rosExecutiveData) => data;
-
-const systemsGetMock: ServiceCallFunction = () =>
-  Promise.resolve({ data: rosSystemsData, filters: rosSystemFilters });
-
-const systemsResponseProcessor = (data: typeof rosSystemsData) => data;
+const getMock: ServiceCallFunction = () => Promise.resolve({ data: rosData });
+const responseProcessor = (data: typeof rosData) => data;
 
 const rosDescriptor: ServiceDescriptor = {
   templates: {
