@@ -10,6 +10,13 @@ objects:
     name: crc-pdf-generator
   spec:
     envName: ${ENV_NAME}
+    inMemoryDb: true
+    objectStore:
+    - pdfs
+    kafkaTopics:
+    - replicas: 1
+      partitions: 1
+      topicName: updated-report
     optionalDependencies:
     - advisor-backend
     - compliance

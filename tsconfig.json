@@ -1,22 +1,21 @@
 {
-    "compilerOptions": {
-      "outDir": "./build/",
-      "sourceMap": true,
-      "noImplicitAny": true,
-      "module": "esnext",
-      "target": "esnext",
-      "jsx": "react",
-      "allowJs": false,
-      "moduleResolution": "node",
-      "removeComments": false,
-      "strict": true,
-      "allowSyntheticDefaultImports": true,
-      "esModuleInterop": true,
-      "forceConsistentCasingInFileNames": true,
-      "resolveJsonModule": true,
-      "types": ["node", "jest"],
-    },
-    "include": ["src/**/*.ts", "src/**/*.tsx"],
-    "exclude": ["node_modules", "**/*.cy.tsx"]
-  }
-  
+  "compilerOptions": {
+    "outDir": "./build/",
+    "sourceMap": true,
+    "noImplicitAny": true,
+    "module": "esnext",
+    "target": "esnext",
+    "jsx": "react",
+    "allowJs": false,
+    "moduleResolution": "node",
+    "removeComments": false,
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "**/*.cy.tsx"]
+}

@@ -1,14 +1,25 @@
+# Packages and env
 node_modules
+.yalc
+.env
 build
-**/.DS_Store
-.vscode
-*.d.ts
-!src/**/*.d.ts
 dist
+
+# Artifacts
+!src/**/*.d.ts
+*.d.ts
 public/*
 !public/favicon.ico
 !public/manifest.json
 !public/robots.txt
 !public/templates
 !public/images
+*.pdf
+
+## Platform and IDE
+**/.DS_Store
 .DS_Store
+.vscode
+
+# Local minio dir
+start

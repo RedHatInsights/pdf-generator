@@ -73,8 +73,7 @@
             "content": {
               "application/pdf": {
                 "schema": {
-                  "type": "string",
-                  "format": "binary"
+                  "$ref": "#/components/schemas/RenderedPdf"
                 }
               }
             }
@@ -84,6 +83,88 @@
           },
           "403": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/create": {
+      "post": {
+        "tags": [
+          "pdf"
+        ],
+        "description": "Generate a PDF from a predefined template",
+        "requestBody": {
+          "description": "Body containing template data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PdfDetails"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/GeneratingPdfId"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/status/:statusID": {
+      "get": {
+        "tags": [
+          "pdf"
+        ],
+        "description": "Fetch the status of a PDF by the ID",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PdfStatus"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/download/:ID": {
+      "get": {
+        "tags": [
+          "pdf"
+        ],
+        "description": "Fetch the rendered PDF by the ID",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/RenderedPdf"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -114,12 +195,52 @@
           }
         }
       },
+      "NotFound": {
+        "description": "404 Not Found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error404"
+            }
+          }
+        }
+      },
       "InternalError": {
         "description": "Internal Server Error",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/Error500"
+            }
+          }
+        }
+      },
+      "RenderedPdf": {
+        "description": "Returns a PDF generated based on the service and template in the query string",
+        "content": {
+          "application/pdf": {
+            "schema": {
+              "$ref": "#/components/schemas/RenderedPdf"
+            }
+          }
+        }
+      },
+      "GeneratingPdfId": {
+        "description": "Returns a status Id for the PDF being generated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PdfStatusId"
+            }
+          }
+        }
+      },
+      "PdfStatus": {
+        "description": "Returns a status object for the PDF being generated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PdfStatus"
             }
           }
         }
@@ -138,6 +259,25 @@
         }
       },
       "Error400": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string"
+              },
+              "statusText": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Error404": {
         "type": "object",
         "properties": {
           "error": {
@@ -185,6 +325,32 @@
             "type": "string"
           }
         }
+      },
+      "PdfStatusId": {
+        "type": "object",
+        "properties": {
+          "statusID": {
+            "type": "string"
+          }
+        }
+      },
+      "PdfStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "filepath": {
+            "type": "string"
+          },
+          "storageLocation": {
+            "type": "string"
+          }
+        }
+      },
+      "RenderedPdf": {
+        "type": "string",
+        "format": "binary"
       }
     }
   },

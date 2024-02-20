@@ -114,3 +114,40 @@ export const getViewportConfig = (
     ),
   };
 };
+type PdfStatus = {
+  [statusID: string]: {
+    status: string;
+    filepath: string;
+  };
+};
+
+type PdfEntry = {
+  status: string;
+  filepath: string;
+};
+
+class PdfCache {
+  private static instance: PdfCache;
+  private data: PdfStatus;
+
+  private constructor() {
+    this.data = {};
+  }
+
+  public static getInstance(): PdfCache {
+    if (!PdfCache.instance) {
+      PdfCache.instance = new PdfCache();
+    }
+    return PdfCache.instance;
+  }
+
+  public setItem(id: string, status: PdfEntry): void {
+    this.data[id] = { ...status };
+  }
+
+  public getItem(id: string): PdfEntry {
+    return this.data[id];
+  }
+}
+
+export default PdfCache;

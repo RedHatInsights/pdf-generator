@@ -6,6 +6,7 @@ For local development you can edit the passed data in the `src/index.js` file. T
 in the browser just do:
 ```
  npm ci
+ docker-compose up
  npm run start:server
 ```
 This will start the react scripts and will serve just the react app on localhost:8000.
@@ -28,7 +29,7 @@ You currently have 2 choices for generating any of the available templates:
 ### Production Endpoint
 The generate endpoint will automatically download the template if it is available (requires the above-mentioned headers)
 ```
- POST http://localhost:8000/api/crc-pdf-generator/v1/generate
+ POST http://localhost:8000/api/crc-pdf-generator/v2/generate
 ```
 
 The request body:
@@ -61,19 +62,36 @@ To download the report, you will need a small piece of JS code. Here is an examp
 
 ```js
 // use fetch or XHR. 
-fetch('/api/crc-pdf-generator/v1/generate', {
+fetch('/api/crc-pdf-generator/v2/create', {
   method: 'POST',
   headers: {
     // do not forget the content type header!
     'Content-Type': 'application/json',
+    'x-rh-identity': 'eyJpZGVudGl0eSI6eyJ1c2VyIjp7InVzZXJfaWQiOiIxMiJ9fX0='
   },
 
   body: JSON.stringify({
       // service and template params are mandatory
       service: 'ros',
-      template: 'executiveReport',
+      template: 'systemsReport',
       // ... any other config options accepted by your template
     }),
+  })
+  .then(async (response) => {
+    const res = await response.json();
+		console.log(res.statusID);
+  });
+
+```
+Grab the statusID from the response and add it to the status call
+
+``` js
+fetch('/api/crc-pdf-generator/v2/download/b5b36108-b03f-4c3d-a1a9-8ccf3a922b20', {
+  headers: {
+    // do not forget the content type header!
+    'Content-Type': 'application/json',
+  }
+  
   })
   .then(async (response) => {
     if (response.ok === false) {
@@ -95,5 +113,4 @@ fetch('/api/crc-pdf-generator/v1/generate', {
   });
 
 ```
-
 The PDF file will be downloaded in the browser.

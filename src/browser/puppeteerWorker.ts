@@ -3,7 +3,7 @@ import puppeteer from 'puppeteer';
 import { v4 as uuidv4 } from 'uuid';
 import os from 'os';
 import fs from 'fs';
-import { TemplateConfig } from '../common/types';
+import { PdfRequestBody } from '../common/types';
 import { apiLogger } from '../common/logging';
 import {
   CHROMIUM_PATH,
@@ -14,6 +14,8 @@ import {
 } from './helpers';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import config from '../common/config';
+import { produceMessage } from '../common/kafka';
+import { uploadPDF } from '../common/objectStore';
 
 // Match the timeout on the gateway
 const BROWSER_TIMEOUT = 60_000;
@@ -50,14 +52,8 @@ const generatePdf = async ({
   templateConfig,
   orientationOption,
   dataOptions,
-}: {
-  url: string;
-  templateConfig: TemplateConfig;
-  templateData: Record<string, unknown>;
-  orientationOption?: boolean;
-  rhIdentity: string;
-  dataOptions: Record<string, any>;
-}) => {
+  uuid,
+}: PdfRequestBody) => {
   const pdfPath = getNewPdfName();
   const createFilename = async () => {
     // We don't expect a browser on every run, but we try to connect to it
@@ -122,8 +118,7 @@ const generatePdf = async ({
     await page.setExtraHTTPHeaders({
       ...(dataOptions
         ? {
-            [config?.OPTIONS_HEADER_NAME as string]:
-              JSON.stringify(dataOptions),
+            [config?.OPTIONS_HEADER_NAME]: JSON.stringify(dataOptions),
           }
         : {}),
 
@@ -138,7 +133,10 @@ const generatePdf = async ({
       await redirectFontFiles(request);
     });
 
-    const pageStatus = await page.goto(url, { waitUntil: 'networkidle2' });
+    const pageStatus = await page.goto(url, {
+      waitUntil: 'networkidle2',
+      timeout: BROWSER_TIMEOUT,
+    });
     // get the error from DOM if it exists
     const error = await page.evaluate(() => {
       const elem = document.getElementById('report-error');
@@ -153,13 +151,40 @@ const generatePdf = async ({
       try {
         // error should be JSON
         response = JSON.parse(error);
+        apiLogger.debug(response.data);
       } catch {
         // fallback to initial error value
         response = error;
+        apiLogger.debug(`Page render error ${response}`);
       }
-      throw new Error(`${response}`);
+      const updated = {
+        id: uuid,
+        status: `Failed: ${response}`,
+        filepath: '',
+      };
+      produceMessage('updated-report', updated)
+        .then(() => {
+          apiLogger.debug('Kafka error message sent');
+        })
+        .catch((error: unknown) => {
+          apiLogger.error(`Kafka message not sent : ${error}`);
+        });
+      throw new Error(`Page render error: ${response}`);
     }
     if (!pageStatus?.ok()) {
+      apiLogger.debug(`Page status: ${pageStatus?.statusText()}`);
+      const updated = {
+        id: uuid,
+        status: `Failed: ${pageStatus?.statusText()}`,
+        filepath: '',
+      };
+      produceMessage('updated-report', updated)
+        .then(() => {
+          apiLogger.debug('Kafka error message sent');
+        })
+        .catch((error: unknown) => {
+          apiLogger.error(`Kafka message not sent: ${error}`);
+        });
       throw new Error(
         `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`
       );
@@ -184,7 +209,34 @@ const generatePdf = async ({
         landscape,
         timeout: BROWSER_TIMEOUT,
       });
-    } catch (error: any) {
+      uploadPDF(uuid, pdfPath).catch((error: unknown) => {
+        apiLogger.error(`Failed to upload PDF: ${error}`);
+      });
+      const updated = {
+        id: uuid,
+        status: 'Generated',
+        filepath: pdfPath,
+      };
+      produceMessage('updated-report', updated)
+        .then(() => {
+          apiLogger.debug('Kafka success message sent');
+        })
+        .catch((error: unknown) => {
+          apiLogger.error(`Kafka message not sent: ${error}`);
+        });
+    } catch (error: unknown) {
+      const updated = {
+        id: uuid,
+        status: `Failed to print pdf: ${JSON.stringify(error)}`,
+        filepath: '',
+      };
+      produceMessage('updated-report', updated)
+        .then(() => {
+          apiLogger.debug('Kafka error message sent');
+        })
+        .catch((error: unknown) => {
+          apiLogger.error(`Kafka message not sent: ${error}`);
+        });
       throw new Error(`Failed to print pdf: ${JSON.stringify(error)}`);
     } finally {
       await page.close();

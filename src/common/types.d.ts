@@ -49,6 +49,7 @@ export type PdfRequestBody = {
   orientationOption?: boolean;
   rhIdentity: string;
   dataOptions: Record<string, any>;
+  uuid: string;
 };
 
 export type CacheKey = {

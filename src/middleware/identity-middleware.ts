@@ -6,7 +6,7 @@ import config from '../common/config';
 
 const identityMiddleware: Handler = (req, _res, next) => {
   try {
-    const rhIdentity = req.headers[config?.IDENTITY_HEADER_KEY as string];
+    const rhIdentity = req.headers[config?.IDENTITY_HEADER_KEY];
     if (rhIdentity) {
       const identityObject = JSON.parse(
         Buffer.from(rhIdentity as string, 'base64').toString()
@@ -16,9 +16,9 @@ const identityMiddleware: Handler = (req, _res, next) => {
       // The API Token uses `identity.user.user_id` and corresponds to `internal.account_id`
       // in the window.
       const accountID = identityObject?.identity?.user?.user_id;
-      httpContext.set(config?.IDENTITY_HEADER_KEY as string, rhIdentity);
-      httpContext.set(config?.IDENTITY_CONTEXT_KEY as string, identityObject);
-      httpContext.set(config?.ACCOUNT_ID as string, accountID);
+      httpContext.set(config?.IDENTITY_HEADER_KEY, rhIdentity);
+      httpContext.set(config?.IDENTITY_CONTEXT_KEY, identityObject);
+      httpContext.set(config?.ACCOUNT_ID, accountID);
     }
     next();
   } catch (error) {

@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "packages": {
+    "app-common-js": {
+      "signature": "fc017bdf8424f13d648445993a507d54",
+      "file": true,
+      "replaced": "^2.0.0"
+    }
+  }
+}

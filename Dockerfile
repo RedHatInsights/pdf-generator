@@ -12,7 +12,7 @@ RUN chmod +x n-install && yes y | ./n-install
 RUN $HOME/n/bin/n 18
 
 # RUN npm install using package-lock.json
-RUN npm ci
+RUN npm ci 
 # Install the chromium locally if necessary.
 RUN node node_modules/puppeteer/install.js
 RUN chmod -R o+rwx node_modules/puppeteer/.local-chromium

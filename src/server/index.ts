@@ -8,6 +8,8 @@ import config from '../common/config';
 import router from './routes/routes';
 import identityMiddleware from '../middleware/identity-middleware';
 import { requestLogger, apiLogger } from '../common/logging';
+import PdfCache from '../browser/helpers';
+import { consumeMessages } from '../common/kafka';
 
 const PORT = config?.webPort;
 
@@ -21,8 +23,13 @@ app.use(identityMiddleware);
 app.use(requestLogger);
 app.use('/', router);
 
+PdfCache.getInstance();
+
 const server = http.createServer({}, app).listen(PORT, () => {
   apiLogger.info(`Listening on port ${PORT}`);
+  consumeMessages('updated-report').catch((error: unknown) => {
+    apiLogger.error(`${error}`);
+  });
 });
 
 // setup keep alive timeout

@@ -1,13 +1,21 @@
 import ServiceNames from './service-names';
-import { ClowderEndpoint, Clowder } from './clowder';
+import 'dotenv/config';
+import {
+  Endpoint,
+  ObjectBucket,
+  IsClowderEnabled,
+  KafkaBroker,
+  KafkaTopic,
+} from 'app-common-js';
+import { Config } from 'app-common-js/index';
 
 export type ServicesEndpoints = Omit<
   {
-    [key in ServiceNames]: ClowderEndpoint;
+    [key in ServiceNames]: Endpoint;
   } & {
-    'advisor-backend': ClowderEndpoint;
-    'ros-backend': ClowderEndpoint;
-    'vulnerability-engine-manager-service': ClowderEndpoint;
+    'advisor-backend': Endpoint;
+    'ros-backend': Endpoint;
+    'vulnerability-engine-manager-service': Endpoint;
   },
   'advisor' | 'ros' | 'vulnerability'
 >;
@@ -17,6 +25,18 @@ const defaultConfig: {
   metricsPort: number;
   metricsPath: string;
   endpoints: Partial<ServicesEndpoints>;
+  objectStore: {
+    hostname: string;
+    port: number;
+    accessKey: string;
+    secretKey: string;
+    tls: boolean;
+    buckets: ObjectBucket[];
+  };
+  kafka: {
+    brokers: KafkaBroker[];
+    topics: KafkaTopic[];
+  };
   APIPrefix: string;
   IS_PRODUCTION: boolean;
   IS_DEVELOPMENT: boolean;
@@ -27,17 +47,57 @@ const defaultConfig: {
   LOG_LEVEL: string;
 } = {
   webPort: 8000,
-  metricsPort: 8080,
+  metricsPort: 9000,
   metricsPath: '/metrics',
   endpoints: {},
-  APIPrefix: '/api/crc-pdf-generator/v1',
+  objectStore: {
+    hostname: 'localhost',
+    port: 9100,
+    accessKey: process.env.MINIO_ACCESS_KEY as string,
+    secretKey: process.env.MINIO_SECRET_KEY as string,
+    tls: false,
+    buckets: [
+      {
+        accessKey: process.env.MINIO_ACCESS_KEY as string,
+        secretKey: process.env.MINIO_SECRET_KEY as string,
+        requestedName: 'pdfs',
+        name: 'pdfs',
+      },
+    ],
+  },
+  kafka: {
+    brokers: [
+      {
+        hostname: 'localhost',
+        port: 9092,
+        authType: '',
+        caCert: '',
+        socketAddress: 'localhost:9092',
+        securityProtocol: '',
+        saslConfig: {
+          username: 'me',
+          password: 'me',
+          saslMechanism: '',
+          securityProtocol: '',
+        },
+      },
+    ],
+    topics: [
+      {
+        requestedName: 'updated-report',
+        name: 'updated-report',
+        consumerGroupName: '',
+      },
+    ],
+  },
+  APIPrefix: '/api/crc-pdf-generator',
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',
   OPTIONS_HEADER_NAME: 'x-pdf-gen-options',
   IDENTITY_CONTEXT_KEY: 'identity',
   IDENTITY_HEADER_KEY: 'x-rh-identity',
   ACCOUNT_ID: '',
-  LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+  LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
 };
 
 /**
@@ -59,6 +119,7 @@ const defaultConfig: {
  */
 
 function initializeConfig() {
+  console.log('Starting config');
   let isClowderEnabled = false;
   const endpoints: Partial<ServicesEndpoints> = {};
   try {
@@ -70,10 +131,10 @@ function initializeConfig() {
      * TODO: Open issue over at https://github.com/RedHatInsights/app-common-js
      */
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const clowder: Clowder = require('app-common-js');
-    isClowderEnabled = clowder.IsClowderEnabled();
+    const clowder = new Config();
+    isClowderEnabled = IsClowderEnabled();
     if (isClowderEnabled) {
-      const clowderConfig = clowder.LoadedConfig;
+      const clowderConfig = clowder.LoadedConfig();
       if (clowderConfig.endpoints) {
         clowderConfig.endpoints.forEach((endpoint) => {
           // special case for vulnerability
@@ -84,14 +145,21 @@ function initializeConfig() {
           }
         });
       }
-
+      // if (clowder.KafkaServers()) {
+      //   const brokers = clowder.KafkaServers();
+      //   const configuredBrokers: string[] = [];
+      //   brokers.map((v: KafkaBroker) => {
+      //     configuredBrokers.push(v.socketAddress);
+      //   });
+      //   config.KAFKA_BROKERS = configuredBrokers;
+      // }
       config = {
         ...defaultConfig,
         ...clowderConfig,
         endpoints,
       };
-      return config;
     }
+    return config;
   } catch (error) {
     return defaultConfig;
   }

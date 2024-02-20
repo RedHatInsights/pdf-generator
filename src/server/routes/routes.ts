@@ -4,12 +4,15 @@ import httpContext from 'express-http-context';
 import getTemplateData from '../data-access';
 import ServiceNames from '../../common/service-names';
 import renderTemplate from '../render-template';
-import { processOrientationOption, sanitizeInput } from '../../browser/helpers';
+import PdfCache, {
+  processOrientationOption,
+  sanitizeInput,
+} from '../../browser/helpers';
 import { SendingFailedError, PDFNotFoundError } from '../errors';
 import config from '../../common/config';
 import previewPdf from '../../browser/previewPDF';
 import pool from '../workers';
-import { ReportCache } from '../cache';
+import { Request } from 'express';
 import {
   GenerateHandlerRequest,
   PdfRequestBody,
@@ -17,19 +20,21 @@ import {
   PreviewHandlerRequest,
 } from '../../common/types';
 import { apiLogger } from '../../common/logging';
+import { v4 as uuidv4 } from 'uuid';
+import { ReportCache } from '../cache';
+import { downloadPDF } from '../../common/objectStore';
 
 const router = Router();
 const cache = new ReportCache();
+const pdfCache = PdfCache.getInstance();
 
-function getPdfRequestBody(
-  config: any,
-  req: GenerateHandlerRequest
-): PdfRequestBody {
-  const rhIdentity = httpContext.get(config?.IDENTITY_HEADER_KEY as string);
+function getPdfRequestBody(req: GenerateHandlerRequest): PdfRequestBody {
+  const rhIdentity = httpContext.get(config?.IDENTITY_HEADER_KEY);
   const orientationOption = processOrientationOption(req);
   const service = req.body.service;
   const template = req.body.template;
   const dataOptions = req.body;
+  const uuid = `${uuidv4()}`;
   const url = `http://localhost:${config?.webPort}?template=${template}&service=${service}`;
   return {
     url,
@@ -40,8 +45,20 @@ function getPdfRequestBody(
     },
     orientationOption,
     dataOptions,
+    uuid,
   };
 }
+
+const isValidPdfRequest = (body: PdfRequestBody) => {
+  // identity is handled at the worker level
+  if (
+    body.templateConfig.template === '' ||
+    !Object.values(ServiceNames).includes(body.templateConfig.service)
+  ) {
+    return false;
+  }
+  return true;
+};
 
 // Middleware that activates on all routes, responsible for rendering the correct
 // template/component into html to the requester.
@@ -63,9 +80,9 @@ router.use('^/$', async (req: PuppeteerBrowserRequest, res, _next) => {
   };
   try {
     const configHeaders: string | string[] | undefined =
-      req.headers[config?.OPTIONS_HEADER_NAME as string];
+      req.headers[config?.OPTIONS_HEADER_NAME];
     if (configHeaders) {
-      delete req.headers[config?.OPTIONS_HEADER_NAME as string];
+      delete req.headers[config?.OPTIONS_HEADER_NAME];
     }
 
     const templateData = await getTemplateData(
@@ -89,16 +106,144 @@ router.use('^/$', async (req: PuppeteerBrowserRequest, res, _next) => {
   }
 });
 
-router.get(`${config?.APIPrefix}/hello`, (_req, res) => {
+router.get(`${config?.APIPrefix}/v1/hello`, (_req, res) => {
   return res.status(200).send('<h1>Well this works!</h1>');
 });
 
 router.post(
-  `${config?.APIPrefix}/generate`,
+  `${config?.APIPrefix}/v2/create`,
   async (req: GenerateHandlerRequest, res, next) => {
-    const pdfDetails = getPdfRequestBody(config, req);
+    const pdfDetails = getPdfRequestBody(req);
+    const pdfID = pdfDetails.uuid;
+    if (!isValidPdfRequest(pdfDetails)) {
+      const errStr = 'Failed: service and template options must not be empty';
+      apiLogger.debug(errStr);
+      pdfCache.setItem(pdfID, { status: errStr, filepath: '' });
+      return res.status(400).send({
+        error: {
+          status: 400,
+          statusText: 'Bad Request',
+          description: `${errStr}`,
+        },
+      });
+    }
+    pdfDetails.uuid = pdfID;
+    apiLogger.debug(pool.stats());
+    // TODO: Send to some object store (Redis?)
+    pdfCache.setItem(pdfID, { status: 'Received', filepath: '' });
+
+    try {
+      pool
+        .exec<(...args: unknown[]) => string>('generatePdf', [pdfDetails])
+        .catch((error: unknown) => {
+          apiLogger.error(`${error}`);
+        });
+      pdfCache.setItem(pdfID, { status: 'Generating', filepath: '' });
+
+      return res.status(202).send({ statusID: pdfID });
+    } catch (error: unknown) {
+      const errStr = `${error}`;
+      if (errStr.includes('No API descriptor')) {
+        apiLogger.error(`Error: ${error}`);
+        pdfCache.setItem(pdfID, { status: `Failed: ${errStr}`, filepath: '' });
+        res.status(400).send({
+          error: {
+            status: 400,
+            statusText: 'Bad Request',
+            description: `${error}`,
+          },
+        });
+      } else {
+        apiLogger.error(`Internal Server error: ${error}`);
+        pdfCache.setItem(pdfID, { status: `Failed: ${error}`, filepath: '' });
+        res.status(500).send({
+          error: {
+            status: 500,
+            statusText: 'Internal server error',
+            description: `${error}`,
+          },
+        });
+      }
+      next();
+    } finally {
+      // To handle the edge case where a pool terminates while the queue isn't empty,
+      // we ensure that the queue is empty and all workers are idle.
+      const stats = pool.stats();
+      apiLogger.debug(JSON.stringify(stats, null, 2));
+      if (
+        stats.pendingTasks === 0 &&
+        stats.totalWorkers === stats.idleWorkers
+      ) {
+        await pool.terminate();
+      }
+    }
+  }
+);
+
+router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
+  const ID = req.params.statusID;
+  try {
+    const status = pdfCache.getItem(ID);
+    apiLogger.debug(JSON.stringify(status));
+    if (!status) {
+      res.status(404).send({
+        error: {
+          status: 404,
+          statusText: 'PDF status could not be determined; Please check the ID',
+          description: `No PDF status found for ${ID}`,
+        },
+      });
+    }
+
+    return res.status(200).send({ status });
+  } catch (error) {
+    res.status(400).send({
+      error: {
+        status: 400,
+        statusText: 'PDF status could not be determined',
+        description: `Error: ${error}`,
+      },
+    });
+  }
+});
+
+router.get(
+  `${config?.APIPrefix}/v2/download/:ID`,
+  async (req: Request, res) => {
+    const ID = req.params.ID;
+    try {
+      apiLogger.debug(ID);
+      const stream = await downloadPDF(ID);
+      if (!stream) {
+        return res.status(404).send({
+          error: {
+            status: 404,
+            statusText: `No PDF found; Please check the status of this ID`,
+            description: `No PDF found for ${ID}`,
+          },
+        });
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${ID}.pdf"`);
+      stream.pipe(res);
+    } catch (error) {
+      res.status(400).send({
+        error: {
+          status: 400,
+          statusText: 'PDF status could not be determined',
+          description: `Error: ${error}`,
+        },
+      });
+    }
+  }
+);
+
+router.post(
+  `${config?.APIPrefix}/v1/generate`,
+  async (req: GenerateHandlerRequest, res, next) => {
+    const pdfDetails = getPdfRequestBody(req);
     const { rhIdentity: _, ...noIdentityHeader } = pdfDetails;
-    const accountID = httpContext.get(config?.ACCOUNT_ID as string);
+    const accountID = httpContext.get(config?.ACCOUNT_ID);
     const cacheKey = cache.createCacheKey({
       request: noIdentityHeader,
       accountID: accountID,
@@ -126,7 +271,7 @@ router.post(
     apiLogger.debug(JSON.stringify(pool.stats(), null, 2));
 
     try {
-      const pathToPdf = await pool.exec<(...args: any[]) => string>(
+      const pathToPdf = await pool.exec<(...args: unknown[]) => string>(
         'generatePdf',
         [pdfDetails]
       );
@@ -153,7 +298,7 @@ router.post(
         }
         apiLogger.info('Successfully generated report');
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       const errStr = `${error}`;
       if (errStr.includes('No API descriptor')) {
         apiLogger.error(`Failed to generate a PDF: ${error}`);
@@ -240,7 +385,7 @@ router.get('/healthz', (_req, res, _next) => {
   return res.status(200).send('Build assets available');
 });
 
-router.get(`${config?.APIPrefix}/openapi.json`, (_req, res, _next) => {
+router.get(`${config?.APIPrefix}/v1/openapi.json`, (_req, res, _next) => {
   fs.readFile('./docs/openapi.json', 'utf8', (err, data) => {
     if (err) {
       apiLogger.error(err);

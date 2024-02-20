@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 // Use the RFC standard syslogs
 // https://github.com/winstonjs/winston#logging-levels
 const logLevels = winston.config.syslog.levels;
-const configLevel = config?.LOG_LEVEL as string;
+const configLevel = config?.LOG_LEVEL;
 // levels > warning means notice, info, or debug.
 export const SendVerboseLogs = logLevels[configLevel] > logLevels.warning;
 
@@ -33,6 +33,7 @@ export const apiLogger = winston.createLogger({
  * requestLogger is exclusively responsible for logging requests from express.
  */
 export const requestLogger = expressWinston.logger({
+  level: config?.LOG_LEVEL,
   transports: [new winston.transports.Console()],
   requestWhitelist: ['url', 'method', 'httpVersion', 'originalUrl', 'query'],
   format: winston.format.combine(
