@@ -1,10 +1,15 @@
-FROM registry.access.redhat.com/ubi8/nodejs-16
+FROM registry.access.redhat.com/ubi8/ubi-minimal
 
 USER 0
 
 WORKDIR /pdf-gen
 ADD . /pdf-gen
 RUN mkdir -p /pdf-gen/bin
+
+RUN microdnf install -y git make tar
+RUN curl -L https://git.io/n-install --output n-install
+RUN chmod +x n-install && yes y | ./n-install
+RUN $HOME/n/bin/n 18
 
 # RUN npm install using package-lock.json
 RUN npm ci
@@ -16,7 +21,7 @@ RUN chmod -R o+rwx node_modules/puppeteer/.local-chromium
 RUN node circular.js
 
 # install puppeteer/chromium dependencies
-RUN dnf install -y bzip2 fontconfig nss.x86_64 pango.x86_64 libXcomposite.x86_64 libXcursor.x86_64 libXdamage.x86_64 libXext.x86_64 libXi.x86_64 libXtst.x86_64 cups-libs.x86_64 libXScrnSaver.x86_64 libXrandr.x86_64 GConf2.x86_64 alsa-lib.x86_64 atk.x86_64 gtk3.x86_64 libdrm libgbm libxshmfence GConf2 nss libXScrnSaver alsa-lib wget
+RUN microdnf install -y bzip2 fontconfig pango.x86_64 libXcomposite.x86_64 libXcursor.x86_64 libXdamage.x86_64 libXext.x86_64 libXi.x86_64 libXtst.x86_64 cups-libs.x86_64 libXScrnSaver.x86_64 libXrandr.x86_64 alsa-lib.x86_64 atk.x86_64 gtk3.x86_64 libdrm libgbm libxshmfence libXScrnSaver alsa-lib wget nss.x86_64 nss GConf2 GConf2.x86_64
 RUN wget -O /pdf-gen/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64
 RUN chmod +x /pdf-gen/bin/dumb-init
 

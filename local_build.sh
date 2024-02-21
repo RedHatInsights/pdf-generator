@@ -1,4 +1,3 @@
-echo "**************************************************PRDEL"
 APP=crc-pdf-generator
 NS=crc-pdf-generator
 
