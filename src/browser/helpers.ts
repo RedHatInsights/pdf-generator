@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import puppeteer from 'puppeteer';
+import { Page } from 'puppeteer';
 import { glob } from 'glob';
 import { resolve } from 'path';
 import { PreviewReqBody, PreviewReqQuery } from '../common/types';
@@ -68,11 +68,7 @@ const A4Height = 297;
 export const pageWidth = (A4Height - 20) * 4;
 export const pageHeight = (A4Width - 40) * 4;
 
-export const setWindowProperty = (
-  page: puppeteer.Page,
-  name: string,
-  value: string
-) =>
+export const setWindowProperty = (page: Page, name: string, value: string) =>
   page.evaluateOnNewDocument(`
     Object.defineProperty(window, '${name}', {
       get() {
