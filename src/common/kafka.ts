@@ -80,9 +80,9 @@ const KafkaClient = () => {
 };
 
 const pdfCache = PdfCache.getInstance();
+const kafka = KafkaClient();
 
 export async function produceMessage(topic: string, message: unknown) {
-  const kafka = KafkaClient();
   const producer = kafka.producer();
 
   await producer.connect();
@@ -95,9 +95,7 @@ export async function produceMessage(topic: string, message: unknown) {
 }
 
 export async function consumeMessages(topic: string) {
-  const kafka = KafkaClient();
   const consumer = kafka.consumer({ groupId: `pdf-gen-${os.hostname()}` });
-
   await consumer.connect();
   await consumer.subscribe({ topic: topic, fromBeginning: true });
 
