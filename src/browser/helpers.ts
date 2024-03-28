@@ -149,6 +149,10 @@ class PdfCache {
   public getItem(id: string): PdfEntry {
     return this.data[id];
   }
+
+  public deleteItem(id: string) {
+    delete this.data[id];
+  }
 }
 
 export default PdfCache;
