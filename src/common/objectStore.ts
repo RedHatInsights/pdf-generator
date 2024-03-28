@@ -6,7 +6,6 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { createReadStream } from 'fs-extra';
-import { Readable } from 'stream';
 
 export const StorageClient = () => {
   if (config?.objectStore.tls) {
@@ -70,7 +69,7 @@ export const downloadPDF = async (id: string) => {
     // Send the GetObjectCommand to S3
     const response = await s3.send(new GetObjectCommand(downloadParams));
     apiLogger.debug(`PDF found downloading as ${id}.pdf`);
-    return response.Body as Readable;
+    return response;
   } catch (error) {
     apiLogger.debug(`Error downloading file: ${error}`);
   }

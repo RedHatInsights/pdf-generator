@@ -23,6 +23,7 @@ import { apiLogger } from '../../common/logging';
 import { v4 as uuidv4 } from 'uuid';
 import { ReportCache } from '../cache';
 import { downloadPDF } from '../../common/objectStore';
+import { Readable } from 'stream';
 
 const router = Router();
 const cache = new ReportCache();
@@ -212,8 +213,8 @@ router.get(
     const ID = req.params.ID;
     try {
       apiLogger.debug(ID);
-      const stream = await downloadPDF(ID);
-      if (!stream) {
+      const response = await downloadPDF(ID);
+      if (!response) {
         return res.status(404).send({
           error: {
             status: 404,
@@ -222,8 +223,13 @@ router.get(
           },
         });
       }
-      res.setHeader('Content-Type', 'application/pdf');
+      if (response.ContentLength && response.ContentLength > 0) {
+        const contentLength = response.ContentLength;
+        res.setHeader('Content-Length', contentLength);
+      }
       res.setHeader('Content-Disposition', `inline; filename="${ID}.pdf"`);
+      res.setHeader('Content-Type', 'application/pdf');
+      const stream = response.Body as Readable;
       stream.pipe(res);
     } catch (error) {
       res.status(400).send({
