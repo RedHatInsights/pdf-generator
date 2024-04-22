@@ -16,7 +16,7 @@
     "@types/node-fetch": "^2.6.11",
     "app-common-js": "^2.2.4",
     "atob": "^2.1.2",
-    "axios": "^0.27.2",
+    "axios": "^0.28.0",
     "bluebird": "^3.7.2",
     "bufferutil": "^4.0.6",
     "cors": "^2.8.5",
@@ -86,13 +86,9 @@
     "html-webpack-plugin": "5.5.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^28.0.0",
-    "jest-image-snapshot": "^5.2.0",
-    "jest-puppeteer": "^6.1.1",
     "madge": "^6.1.0",
     "mini-css-extract-plugin": "^2.6.1",
-    "nodemon": "^2.0.19",
-    "npm-watch": "^0.11.0",
-    "react-hot-loader": "^4.13.0",
+    "nodemon": "^3.1.0",
     "regenerator-runtime": "^0.13.9",
     "resolve-url-loader": "^5.0.0",
     "sass": "^1.54.8",
@@ -119,10 +115,9 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "start:server": "NODE_ENV=development npx concurrently \"npx webpack -c ./config/webpack.config.js -w\" \"npx nodemon ./dist/server.js\"",
-    "test": "jest",
     "test:unit": "jest --projects src/unit.jest.config.js",
-    "test:visual": "node visual-test.js",
-    "api:validate": "swagger-cli validate ./docs/openapi.json"
+    "api:validate": "swagger-cli validate ./docs/openapi.json",
+    "audit:grype": "docker build . -t crc-pdf-generator:audit && grype crc-pdf-generator:audit --fail-on medium --only-fixed"
   },
   "jest": {
     "projects": [

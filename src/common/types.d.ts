@@ -66,3 +66,9 @@ declare module 'http' {
     [config.IDENTITY_HEADER_KEY]: string;
   }
 }
+
+declare global {
+  interface Window {
+    customPuppeteerParams?: string;
+  }
+}
