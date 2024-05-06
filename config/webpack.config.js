@@ -34,10 +34,6 @@ const serverConfig = {
   ],
   entry: {
     server: path.resolve(__dirname, '../src/server/index.ts'),
-    puppeteerWorker: {
-      import: path.resolve(__dirname, '../src/browser/puppeteerWorker.ts'),
-      chunkLoading: false,
-    },
   },
   output: {
     path: path.resolve(__dirname, '../dist'),

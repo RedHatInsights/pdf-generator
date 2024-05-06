@@ -9,12 +9,7 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
 } from '@aws-sdk/client-s3';
-import {
-  createReadStream,
-  ensureDirSync,
-  createWriteStream,
-  writeFile,
-} from 'fs-extra';
+import { createReadStream, ensureDirSync, writeFile } from 'fs-extra';
 import PdfCache from './pdfCache';
 
 const asyncWriteFile = promisify(writeFile);
@@ -97,7 +92,7 @@ export const uploadPDF = async (id: string, path: string) => {
 
     // Upload the file to S3
     const response = await s3.send(new PutObjectCommand(uploadParams));
-    apiLogger.debug(`File uploaded successfully: ${response}`);
+    apiLogger.debug(`File uploaded successfully: ${JSON.stringify(response)}`);
   } catch (error) {
     apiLogger.debug(`Error uploading file: ${error}`);
   }

@@ -183,6 +183,7 @@ router.post(
     addProxy(req);
     const collectionId = crypto.randomUUID();
     // for testing purposes
+    console.log(req.body.payload);
     const requestConfigs = Array.isArray(req.body.payload)
       ? req.body.payload
       : [req.body.payload];
@@ -239,19 +240,19 @@ router.post(
             collectionId: error.collectionId,
             componentId: error.componentId,
           };
-          apiLogger.error(`Error: ${error}`);
+          apiLogger.error(`Error: ${JSON.stringify(error)}`);
           UpdateStatus(updateMessage);
           res.status(400).send({
             error: {
               status: 400,
               statusText: 'Bad Request',
-              description: `${error}`,
+              description: `${JSON.stringify(error)}`,
             },
           });
         } else {
-          apiLogger.error(`Internal Server error: ${error}`);
+          apiLogger.error(`Internal Server error: ${JSON.stringify(error)}`);
           const updateMessage = {
-            status: `Failed: ${error}`,
+            status: `Failed: ${JSON.stringify(error)}`,
             filepath: '',
             collectionId: error.collectionId,
             componentId: error.componentId,
@@ -261,14 +262,14 @@ router.post(
             error: {
               status: 500,
               statusText: 'Internal server error',
-              description: `${error}`,
+              description: `${JSON.stringify(error)}`,
             },
           });
         }
       }
     } finally {
       // To handle the edge case where a pool terminates while the queue isn't empty,
-      // we ensure that the queue is empty and all workers are idle.
+      // we ensure that the queue is empty .
       await cluster.idle();
       apiLogger.debug('task finished');
       await cluster.close();
