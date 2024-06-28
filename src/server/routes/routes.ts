@@ -197,14 +197,8 @@ router.post(
           delete req.headers[config?.OPTIONS_HEADER_NAME];
         }
         apiLogger.debug(`Single call to generator queued for ${collectionId}`);
-        await generatePdf(pdfDetails, collectionId);
-        const updateMessage = {
-          status: PdfStatus.Generating,
-          filepath: '',
-          componentId: pdfDetails.uuid,
-          collectionId,
-        };
-        UpdateStatus(updateMessage);
+        pdfCache.setExpectedLength(collectionId, requiredCalls);
+        generatePdf(pdfDetails, collectionId);
         return res.status(202).send({ statusID: collectionId });
       }
       for (let x = 0; x < Number(requiredCalls); x++) {
@@ -215,14 +209,8 @@ router.post(
           delete req.headers[config?.OPTIONS_HEADER_NAME];
         }
         apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
-        await generatePdf(pdfDetails, collectionId);
-        const updateMessage = {
-          status: PdfStatus.Generating,
-          filepath: '',
-          componentId: pdfDetails.uuid,
-          collectionId: collectionId,
-        };
-        UpdateStatus(updateMessage);
+        pdfCache.setExpectedLength(collectionId, requiredCalls);
+        generatePdf(pdfDetails, collectionId);
       }
 
       return res.status(202).send({ statusID: collectionId });
@@ -259,6 +247,7 @@ router.post(
 router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
   const ID = req.params.statusID;
   try {
+    pdfCache.verifyCollection(ID);
     const status = pdfCache.getCollection(ID);
     apiLogger.debug(JSON.stringify(status));
     if (!status) {

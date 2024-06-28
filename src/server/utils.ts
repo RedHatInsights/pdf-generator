@@ -5,8 +5,8 @@ import PdfCache, { PDFComponent } from '../common/pdfCache';
 
 const pdfCache = PdfCache.getInstance();
 
-export const UpdateStatus = (updateMessage: PDFComponent) => {
-  produceMessage(UPDATE_TOPIC, updateMessage)
+export const UpdateStatus = async (updateMessage: PDFComponent) => {
+  await produceMessage(UPDATE_TOPIC, updateMessage)
     .then(() => {
       apiLogger.debug('Generating message sent');
     })
@@ -14,6 +14,7 @@ export const UpdateStatus = (updateMessage: PDFComponent) => {
       apiLogger.error(`Kafka message not sent: ${error}`);
     });
   pdfCache.addToCollection(updateMessage.collectionId, updateMessage);
+  pdfCache.verifyCollection(updateMessage.collectionId);
 };
 
 export const isValidPageResponse = (code: number) => {

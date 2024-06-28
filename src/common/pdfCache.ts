@@ -50,6 +50,7 @@ export type PdfCollection = {
 };
 export type PDFComponentGroup = {
   components: PDFComponent[];
+  expectedLength?: number;
   status: PdfStatus;
   error?: string;
 };
@@ -148,12 +149,41 @@ class PdfCache {
     this.data[collectionId].error = error;
   }
 
+  public setExpectedLength(collectionId: string, length: number): void {
+    if (!collectionId) {
+      apiLogger.debug('no collectionId found');
+      return;
+    }
+    const currentEntry = this.data[collectionId];
+    if (!currentEntry) {
+      this.data[collectionId] = {
+        components: [],
+        status: PdfStatus.Generating,
+      };
+      // Only add cache cleaner once. The entire collection will only last
+      // ENTRY_TIMEOUT hours
+      this.cleanExpiredCollection(collectionId);
+    }
+    this.data[collectionId].expectedLength = length;
+  }
+
   public invalidateCollection(collectionId: string, error: string): void {
     this.updateCollectionState(collectionId, PdfStatus.Failed, error);
   }
 
   public verifyCollection(collectionId: string): void {
-    this.updateCollectionState(collectionId, PdfStatus.Generated);
+    const components = this.data[collectionId].components;
+    if (
+      !this.data[collectionId].expectedLength ||
+      this.data[collectionId].expectedLength !== components.length
+    ) {
+      return;
+    }
+    if (
+      components.every((component) => component.status === PdfStatus.Generated)
+    ) {
+      this.updateCollectionState(collectionId, PdfStatus.Generated);
+    }
   }
 
   public isComplete(id: string): boolean {
