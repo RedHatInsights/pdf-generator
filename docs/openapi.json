@@ -415,6 +415,9 @@
               "$ref": "#/components/schemas/PdfComponent"
             }
           },
+	  "expectedLength": {
+            "type": "number"
+	  },
           "status": {
             "$ref": "#/components/schemas/PdfStatus"
           },
