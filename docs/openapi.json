@@ -420,6 +420,10 @@
           },
           "error": {
             "type": "string"
+          },
+          "expectedLength": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -457,11 +461,11 @@
       "PdfStatusEnum": {
         "type": "string",
         "enum": [
-              "Generating",
-              "Generated",
-              "Failed",
-              "NotFound"
-            ]
+          "Generating",
+          "Generated",
+          "Failed",
+          "NotFound"
+        ]
       },
       "PdfStatus": {
         "type": "string",
