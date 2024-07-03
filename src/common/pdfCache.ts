@@ -172,6 +172,9 @@ class PdfCache {
   }
 
   public verifyCollection(collectionId: string): void {
+    if (!this.data[collectionId]) {
+      return;
+    }
     const components = this.data[collectionId].components;
     if (
       !this.data[collectionId].expectedLength ||

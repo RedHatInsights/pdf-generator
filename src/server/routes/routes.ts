@@ -247,6 +247,7 @@ router.post(
 router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
   const ID = req.params.statusID;
   try {
+    pdfCache.verifyCollection(ID);
     const status = pdfCache.getCollection(ID);
     apiLogger.debug(JSON.stringify(status));
     if (!status) {
@@ -259,7 +260,6 @@ router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
       });
     }
 
-    pdfCache.verifyCollection(ID);
     return res.status(200).send({ status });
   } catch (error) {
     return res.status(400).send({
