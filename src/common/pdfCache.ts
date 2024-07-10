@@ -50,7 +50,7 @@ export type PdfCollection = {
 };
 export type PDFComponentGroup = {
   components: PDFComponent[];
-  expectedLength?: number;
+  expectedLength: number;
   status: PdfStatus;
   error?: string;
 };
@@ -88,6 +88,7 @@ class PdfCache {
       this.data[collectionId] = {
         components: [],
         status: PdfStatus.Generating,
+        expectedLength: 0,
       };
       // Only add cache cleaner once. The entire collection will only last
       // ENTRY_TIMEOUT hours
@@ -159,6 +160,7 @@ class PdfCache {
       this.data[collectionId] = {
         components: [],
         status: PdfStatus.Generating,
+        expectedLength: 0,
       };
       // Only add cache cleaner once. The entire collection will only last
       // ENTRY_TIMEOUT hours
