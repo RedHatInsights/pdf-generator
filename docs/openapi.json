@@ -457,23 +457,15 @@
           }
         }
       },
-      "PdfStatusEnum": {
+      "PdfStatus": {
         "type": "string",
-        "enum": [
+        "description": "enum of all possible status types a Pdf can have",
+	"enum": [
               "Generating",
               "Generated",
               "Failed",
               "NotFound"
             ]
-      },
-      "PdfStatus": {
-        "type": "string",
-        "description": "enum of all possible status types a Pdf can have",
-        "properties": {
-          "status": {
-            "$ref": "#/components/schemas/PdfStatusEnum"
-          }
-        }
       },
       "RenderedPdf": {
         "description": "Pdf stream returned as media type pdf",
