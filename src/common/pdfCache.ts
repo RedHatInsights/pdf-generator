@@ -178,17 +178,37 @@ class PdfCache {
       return;
     }
     const components = this.data[collectionId].components;
-    if (
-      !this.data[collectionId].expectedLength ||
-      this.data[collectionId].expectedLength !== components.length
-    ) {
+
+    for (const component of components) {
+      if (component.status === PdfStatus.Failed) {
+        this.invalidateCollection(collectionId, component.error || '');
+        return;
+      }
+    }
+
+    if (!this.data[collectionId].expectedLength) {
+      this.data[collectionId].expectedLength = 0;
       return;
     }
-    if (
-      components.every((component) => component.status === PdfStatus.Generated)
-    ) {
+
+    if (this.allComponentsGenerated(collectionId, components)) {
       this.updateCollectionState(collectionId, PdfStatus.Generated);
     }
+  }
+
+  private allComponentsGenerated(
+    collectionId: string,
+    components: PDFComponent[]
+  ) {
+    if (
+      components.every(
+        (component) => component.status === PdfStatus.Generated
+      ) &&
+      this.data[collectionId].expectedLength === components.length
+    ) {
+      return true;
+    }
+    return false;
   }
 
   public isComplete(id: string): boolean {
