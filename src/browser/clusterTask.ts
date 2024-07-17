@@ -40,7 +40,7 @@ export const generatePdf = async (
       componentId: componentId,
       collectionId,
     };
-    UpdateStatus(updateMessage);
+    await UpdateStatus(updateMessage);
     await page.setViewport({ width: pageWidth, height: pageHeight });
     const offsetSize = pdfCache.getTotalPagesForCollection(collectionId);
     apiLogger.debug(`PDF offset by: ${offsetSize}`);

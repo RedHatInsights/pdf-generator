@@ -160,7 +160,7 @@ class PdfCache {
       this.data[collectionId] = {
         components: [],
         status: PdfStatus.Generating,
-        expectedLength: 0,
+        expectedLength: length,
       };
       // Only add cache cleaner once. The entire collection will only last
       // ENTRY_TIMEOUT hours
