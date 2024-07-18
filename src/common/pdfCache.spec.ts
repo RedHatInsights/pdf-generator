@@ -77,4 +77,22 @@ describe('Pdf Cache updates', () => {
     expect(noLen.components.length).toBe(1);
     expect(noLen.status).toBe(PdfStatus.Generating);
   });
+
+  it('should set the length properly when a collection has not been added directly', () => {
+    const notAdded: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'blah',
+      collectionId: '2255a523-fc64-6e51-910a-b1ff3918b440',
+      componentId: '11aaaaa-4cdc-4200-afbf-479d904ee987',
+      numPages: 5,
+    };
+    const compId = notAdded.collectionId;
+    pdfCache.setExpectedLength(compId, 2);
+    const added = pdfCache.getCollection(compId);
+    expect(added.components.length).toBe(0);
+    expect(added.status).toBe('Generating');
+    expect(added.expectedLength).toBe(2);
+    pdfCache.verifyCollection(compId);
+    expect(added.status).toBe('Generating');
+  });
 });
