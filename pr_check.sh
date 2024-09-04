@@ -11,7 +11,6 @@ export APP_ROOT=$(pwd)
 # Don't deploy all the dependencies
 export OPTIONAL_DEPS_METHOD="none"
 export DEPLOY_TIMEOUT="1200"
-export COMPONENTS_W_RESOURCES="crc-pdf-generator"
 
 # IQE_PLUGINS="e2e"
 # IQE_MARKER_EXPRESSION="smoke"

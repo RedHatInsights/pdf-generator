@@ -33,6 +33,12 @@ export const StorageClient = () => {
         accessKeyId: config?.objectStore.buckets[0].accessKey,
         secretAccessKey: config?.objectStore.buckets[0].secretKey,
       },
+      requestHandler: {
+        requestTimeout: 60000,
+        httpsAgent: {
+          maxSockets: 500,
+        },
+      },
     });
   }
   apiLogger.debug('minio config');
@@ -46,6 +52,12 @@ export const StorageClient = () => {
     },
     endpoint: `http://${config?.objectStore.hostname}:${config?.objectStore.port}`,
     forcePathStyle: true,
+    requestHandler: {
+      requestTimeout: 60000,
+      httpsAgent: {
+        maxSockets: 500,
+      },
+    },
   });
 };
 
@@ -108,6 +120,8 @@ export const uploadPDF = async (id: string, path: string) => {
   }
 };
 
+// TODO: Large PDFs take too long to merge on the fly
+// Merge them before they're requested over the network
 export const downloadPDF = async (id: string) => {
   const bucket = config?.objectStore.buckets[0].name;
   const collection = PdfCache.getInstance().getCollection(id);

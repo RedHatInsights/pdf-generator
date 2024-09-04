@@ -24,7 +24,6 @@ export const GetPupCluster = async () => {
         '--no-zygote',
         '--no-first-run',
         '--disable-dev-shm-usage',
-        // '--single-process',
         '--mute-audio',
         "--proxy-server='direct://'",
         '--proxy-bypass-list=*',
