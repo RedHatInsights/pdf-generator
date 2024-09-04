@@ -27,6 +27,7 @@ import instanceConfig from '../../common/config';
 
 const router = Router();
 const pdfCache = PdfCache.getInstance();
+const SLICE_LIMIT = 50;
 
 let hasProxy = false;
 
@@ -189,6 +190,11 @@ router.post(
 
     try {
       const requiredCalls = requestConfigs.length;
+      if (requiredCalls >= SLICE_LIMIT) {
+        return res
+          .status(400)
+          .send({ error: `Payload length must be lower than ${SLICE_LIMIT}` });
+      }
       if (requiredCalls === 1) {
         const pdfDetails = getPdfRequestBody(requestConfigs[0]);
         const configHeaders: string | string[] | undefined =
@@ -201,6 +207,7 @@ router.post(
         generatePdf(pdfDetails, collectionId);
         return res.status(202).send({ statusID: collectionId });
       }
+      pdfCache.setExpectedLength(collectionId, requiredCalls);
       for (let x = 0; x < Number(requiredCalls); x++) {
         const pdfDetails = getPdfRequestBody(requestConfigs[x]);
         const configHeaders: string | string[] | undefined =
@@ -209,7 +216,6 @@ router.post(
           delete req.headers[config?.OPTIONS_HEADER_NAME];
         }
         apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
-        pdfCache.setExpectedLength(collectionId, requiredCalls);
         generatePdf(pdfDetails, collectionId);
       }
 
