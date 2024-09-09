@@ -19,14 +19,10 @@ making this approach much faster to make changes to the PDF.
 oc port-forward -n crc-pdf-generator svc/crc-pdf-generator-api 8000:8000
 ```
 
-## Service Integration
+## Service Integration and Onboarding
 
-Follow the check list to integrate your service with the PDF generator
+Follow [the onboarding guide](./docs/onboarding.md) to integrate your service with the CRC PDF generator
 
-1. [API integration](./docs/API-integration.md)
-2. [Local development setup](./docs/local-development-setup.md)
-3. [PDF Template development](./docs/pdf-template-development.md)
-4. [Creating PDF API request](./docs/creating-api-requests.md)
 
 ## Endpoints
 You currently have 2 choices for generating any of the available templates:
@@ -34,17 +30,20 @@ You currently have 2 choices for generating any of the available templates:
 ### Production Endpoint
 The generate endpoint will automatically download the template if it is available (requires the above-mentioned headers)
 ```
- POST http://localhost:8000/api/crc-pdf-generator/v2/generate
+ POST http://localhost:8000/api/crc-pdf-generator/v2/create
 ```
 
-The request body:
+The request body is an array of Scalprum configs
 
-```TS
-type RequestBody = {
-  service: string; // service name
-  template: string; // template name
-  [key: string]: any // additional API request config attributes
-}
+``` shell
+"payload" : [
+  {
+    "manifestLocation": "/apps/landing/fed-mods.json",
+    "scope": "landing",
+    "module": "./PdfEntry"
+  }
+]
+
 ```
 
 ### For local development only
