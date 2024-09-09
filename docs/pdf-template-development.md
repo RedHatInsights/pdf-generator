@@ -3,6 +3,7 @@
 ## Prerequisites
 
 [**All used APIs were integrated with PDF generator**](./API-integration.md)
+
 [**Local development setup**](local-development-setup.md)
 
 ## Data fetching
