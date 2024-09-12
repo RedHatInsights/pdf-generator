@@ -9,6 +9,7 @@ import httpContext from 'express-http-context';
 import renderTemplate from '../render-template';
 import config from '../../common/config';
 import previewPdf from '../../browser/previewPDF';
+import { Readable } from 'stream';
 import {
   GenerateHandlerRequest,
   PdfRequestBody,
@@ -27,7 +28,6 @@ import instanceConfig from '../../common/config';
 
 const router = Router();
 const pdfCache = PdfCache.getInstance();
-const SLICE_LIMIT = 50;
 
 let hasProxy = false;
 
@@ -190,11 +190,6 @@ router.post(
 
     try {
       const requiredCalls = requestConfigs.length;
-      if (requiredCalls >= SLICE_LIMIT) {
-        return res
-          .status(400)
-          .send({ error: `Payload length must be lower than ${SLICE_LIMIT}` });
-      }
       if (requiredCalls === 1) {
         const pdfDetails = getPdfRequestBody(requestConfigs[0]);
         const configHeaders: string | string[] | undefined =
@@ -208,6 +203,7 @@ router.post(
         return res.status(202).send({ statusID: collectionId });
       }
       pdfCache.setExpectedLength(collectionId, requiredCalls);
+      apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
       for (let x = 0; x < Number(requiredCalls); x++) {
         const pdfDetails = getPdfRequestBody(requestConfigs[x]);
         const configHeaders: string | string[] | undefined =
@@ -215,7 +211,6 @@ router.post(
         if (configHeaders) {
           delete req.headers[config?.OPTIONS_HEADER_NAME];
         }
-        apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
         generatePdf(pdfDetails, collectionId);
       }
 
@@ -285,7 +280,7 @@ router.get(
     try {
       apiLogger.debug(ID);
       const response = await downloadPDF(ID);
-      if (!response) {
+      if (!response || !response.Body) {
         return res.status(404).send({
           error: {
             status: 404,
@@ -294,12 +289,10 @@ router.get(
           },
         });
       }
-      if (response.byteLength && response.byteLength > 0) {
-        res.setHeader('Content-Length', response.byteLength);
-      }
+      const pdfStream = response.Body as Readable;
       res.setHeader('Content-Disposition', `inline; filename="${ID}.pdf"`);
       res.setHeader('Content-Type', 'application/pdf');
-      res.send(response);
+      pdfStream.pipe(res);
     } catch (error) {
       res.status(400).send({
         error: {
