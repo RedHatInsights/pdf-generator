@@ -1,5 +1,3 @@
-import PDFMerger from 'pdf-merger-js';
-import { promisify } from 'util';
 import { apiLogger } from './logging';
 import config from './config';
 import {
@@ -9,20 +7,9 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
 } from '@aws-sdk/client-s3';
-import { createReadStream, ensureDirSync, writeFile } from 'fs-extra';
-import PdfCache from './pdfCache';
-
-const asyncWriteFile = promisify(writeFile);
-
-const getFileOrderFromPath = (filepath: string): number => {
-  const stems = filepath.split('/');
-  const orderNumber = stems[stems.length - 1].replace('.pdf', '');
-  return parseInt(orderNumber, 10);
-};
-
-const filepathSort = (a: string, b: string) => {
-  return getFileOrderFromPath(a) - getFileOrderFromPath(b);
-};
+import { createReadStream } from 'fs-extra';
+import * as https from 'https';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 export const StorageClient = () => {
   if (config?.objectStore.tls) {
@@ -33,12 +20,15 @@ export const StorageClient = () => {
         accessKeyId: config?.objectStore.buckets[0].accessKey,
         secretAccessKey: config?.objectStore.buckets[0].secretKey,
       },
-      requestHandler: {
+      // TODO: Determine if this will be needed after more scale testing
+      // The new node handler helps with some S3 timeout and network flakiness
+      requestHandler: new NodeHttpHandler({
         requestTimeout: 60000,
-        httpsAgent: {
+        connectionTimeout: 60000,
+        httpsAgent: new https.Agent({
           maxSockets: 500,
-        },
-      },
+        }),
+      }),
     });
   }
   apiLogger.debug('minio config');
@@ -52,12 +42,13 @@ export const StorageClient = () => {
     },
     endpoint: `http://${config?.objectStore.hostname}:${config?.objectStore.port}`,
     forcePathStyle: true,
-    requestHandler: {
+    requestHandler: new NodeHttpHandler({
       requestTimeout: 60000,
-      httpsAgent: {
+      connectionTimeout: 60000,
+      httpsAgent: new https.Agent({
         maxSockets: 500,
-      },
-    },
+      }),
+    }),
   });
 };
 
@@ -120,69 +111,21 @@ export const uploadPDF = async (id: string, path: string) => {
   }
 };
 
-// TODO: Large PDFs take too long to merge on the fly
-// Merge them before they're requested over the network
+// Fetches a PDF from the configured s3 bucket
 export const downloadPDF = async (id: string) => {
   const bucket = config?.objectStore.buckets[0].name;
-  const collection = PdfCache.getInstance().getCollection(id);
-  if (!collection) {
-    apiLogger.debug(`No collection found for ${id}`);
-    return '';
+  const exists = await checkBucketExists(bucket);
+  if (!exists) {
+    apiLogger.debug(`Error downloading file: No such bucket ${bucket}`);
   }
-  const components = collection.components.map(
-    (component) => `${component.componentId}.pdf`
-  );
-  apiLogger.debug(components);
-  const tmpdir = `/tmp/${id}-components/*`;
-  ensureDirSync(tmpdir);
   try {
-    // Define the parameters for the S3 download
-    const tasks = await Promise.all(
-      components.map((component) => {
-        const downloadParams = {
-          Bucket: bucket,
-          Key: component,
-        };
-        return s3.send(new GetObjectCommand(downloadParams));
-      })
-    );
-
-    // Send the GetObjectCommand to S3
-    const fragments = await Promise.all(tasks);
-    const fragmentNames: string[] = [];
-    // Since these are indexed, we know the order and can sort later
-    const writeTasks = fragments.map((fragment, index) => {
-      return new Promise<void>((resolve, reject) => {
-        const fragmentName = `${tmpdir}/${index}.pdf`;
-        fragment.Body?.transformToByteArray()
-          .then((data) => {
-            return asyncWriteFile(fragmentName, data);
-          })
-          .then(() => {
-            fragmentNames.push(fragmentName);
-            resolve();
-          })
-          .catch((error) => {
-            reject(error);
-          });
-      });
-    });
-
-    await Promise.all(writeTasks);
-    const merger = new PDFMerger();
-
-    // Ensure order of files before merging
-    fragmentNames.sort(filepathSort);
-    // Don't use a Promise.all() to ensure order is deterministic
-    for (const file of fragmentNames) {
-      await merger.add(file);
-    }
-    const buffer = await merger.saveAsBuffer();
-
-    apiLogger.debug(`PDF found downloading as ${id}.pdf`);
-    return buffer;
+    const downloadParams = {
+      Bucket: bucket,
+      Key: `${id}.pdf`,
+    };
+    const response = await s3.send(new GetObjectCommand(downloadParams));
+    return response;
   } catch (error) {
     apiLogger.debug(`Error downloading file: ${error}`);
-    return '';
   }
 };

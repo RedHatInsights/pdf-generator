@@ -2,6 +2,7 @@ const { defaults: tsjPreset } = require('ts-jest/presets');
 
 module.exports = {
   displayName: 'unit-test',
+  preset: 'ts-jest/presets/js-with-ts',
   bail: 0,
   testTimeout: 30000,
   moduleNameMapper: {
@@ -11,5 +12,6 @@ module.exports = {
   transform: {
     ...tsjPreset.transform,
   },
+  transformIgnorePatterns: ['node_modules/(?!(pdf-merger-js)/)'],
   testMatch: ['./**/*.spec.ts'],
 };
