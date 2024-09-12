@@ -22,39 +22,19 @@ Support for external APIs will follow.
 
 ### Defining async requests
 
-In the exposed PDF module define and export `fetchData` function.
+The following types are included in the [frontend-components/types](https://github.com/RedHatInsights/frontend-components/tree/master/packages/types) package.
+Import them and implement your requests as needed for your API. You can find a working example in the [Landing page's PDF module](https://github.com/RedHatInsights/landing-page-frontend/blob/master/src/moduleEntries/PdfEntry.tsx)
 
-TODO: Provide types in the types package.
+In the exposed PDF module define and export `fetchData` function. The name must match to correctly implement the interface.
 
 ```ts
-import type { AxiosRequestConfig } from 'axios';
 
-type CreateAxiosRequest<T = any> = (
-  service: string,
-  config: AxiosRequestConfig
-) => Promise<T>;
+import { AsyncState, CreateAxiosRequest, FetchData } from '@redhat-cloud-services/types';
 
-type FetchData = (
-  createAsyncRequest: CreateAxiosRequest,
-  options: Record<string, any>
-) => Promise<any>;
-
-
-export const fetchData: FetchData = async (createAsyncRequest, options) {
+export const fetchData: FetchData = async (createAsyncRequest: CreateAxiosRequest) => {
   // async implementation
-}
+};
 
-```
-
-#### `createAsyncRequest`
-
-A function that creates the async request.
-
-```ts
-type CreateAxiosRequest<T = any> = (
-  service: string,
-  config: AxiosRequestConfig
-) => Promise<T>;
 ```
 
 *service*
@@ -79,17 +59,13 @@ The configuration of your service. It uses the axios (v1) configuration object. 
 There can be asy many calls required in any order required. The PDF generator will use the return value as an input for the PDF template.
 
 ```ts
-type CreateAxiosRequest<T = any> = (
-  service: string,
-  config: AxiosRequestConfig
-) => Promise<T>;
+import {
+  AsyncState,
+  CreateAxiosRequest,
+  FetchData,
+} from '@redhat-cloud-services/types';
 
-type FetchData = (
-  createAsyncRequest: CreateAxiosRequest,
-  options: unknown
-) => Promise<any>;
-
-export const fetchData: FetchData = async (createAsyncRequest, options) => {
+export const fetchData: FetchData = async (createAsyncRequest: CreateAsyncRequest) => {
   const requestGenerated = createAsyncRequest('chrome-service', {
     method: 'GET',
     url: '/api/chrome-service/v1/static/beta/stage/services/services-generated.json',
