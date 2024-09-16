@@ -1,6 +1,9 @@
 import PdfCache, { PDFComponent, PdfStatus } from './pdfCache';
 
 describe('Pdf Cache updates', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
   const pdfCache = PdfCache.getInstance();
   const cache: PDFComponent = {
     status: PdfStatus.Failed,
@@ -23,6 +26,10 @@ describe('Pdf Cache updates', () => {
   });
 
   it('should validate a generated collection with all expected components', () => {
+    const mockMergePDFsFromCompleteCollection = jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockImplementation(jest.fn());
     const comp: PDFComponent = {
       status: PdfStatus.Generated,
       filepath: 'blah',
@@ -41,16 +48,19 @@ describe('Pdf Cache updates', () => {
     pdfCache.addToCollection(compId, comp);
     pdfCache.setExpectedLength(compId, 2);
     pdfCache.verifyCollection(compId);
-    const unfinished = pdfCache.getCollection(compId);
-    expect(unfinished.expectedLength).toBe(2);
-    expect(unfinished.components.length).toBe(1);
-    expect(unfinished.status).toBe(PdfStatus.Generating);
+    const collection = pdfCache.getCollection(compId);
+    expect(collection.expectedLength).toBe(2);
+    expect(collection.components.length).toBe(1);
+    expect(collection.status).toBe(PdfStatus.Generating);
     pdfCache.addToCollection(compId, another);
     pdfCache.verifyCollection(compId);
-    const finished = pdfCache.getCollection(compId);
-    expect(finished.expectedLength).toBe(2);
-    expect(finished.components.length).toBe(2);
-    expect(finished.status).toBe(PdfStatus.Generated);
+    expect(collection.expectedLength).toBe(2);
+    expect(collection.components.length).toBe(2);
+    // Since the "Generated" status is dependant on uploading a PDF
+    // we will cover it in integration testing and assert that
+    // the merge method is called
+    expect(mockMergePDFsFromCompleteCollection).toHaveBeenCalled();
+    expect(mockMergePDFsFromCompleteCollection).toHaveBeenCalledWith(compId);
   });
 
   it('should invalidate a failed collection', () => {

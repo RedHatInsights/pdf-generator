@@ -188,30 +188,26 @@ router.post(
       ? req.body.payload
       : [req.body.payload];
 
+    const configHeaders: string | string[] | undefined =
+      req.headers[config?.OPTIONS_HEADER_NAME];
+    if (configHeaders) {
+      delete req.headers[config?.OPTIONS_HEADER_NAME];
+    }
+
     try {
       const requiredCalls = requestConfigs.length;
       if (requiredCalls === 1) {
         const pdfDetails = getPdfRequestBody(requestConfigs[0]);
-        const configHeaders: string | string[] | undefined =
-          req.headers[config?.OPTIONS_HEADER_NAME];
-        if (configHeaders) {
-          delete req.headers[config?.OPTIONS_HEADER_NAME];
-        }
         apiLogger.debug(`Single call to generator queued for ${collectionId}`);
         pdfCache.setExpectedLength(collectionId, requiredCalls);
-        generatePdf(pdfDetails, collectionId);
+        generatePdf(pdfDetails, collectionId, 1);
         return res.status(202).send({ statusID: collectionId });
       }
       pdfCache.setExpectedLength(collectionId, requiredCalls);
       apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
       for (let x = 0; x < Number(requiredCalls); x++) {
         const pdfDetails = getPdfRequestBody(requestConfigs[x]);
-        const configHeaders: string | string[] | undefined =
-          req.headers[config?.OPTIONS_HEADER_NAME];
-        if (configHeaders) {
-          delete req.headers[config?.OPTIONS_HEADER_NAME];
-        }
-        generatePdf(pdfDetails, collectionId);
+        generatePdf(pdfDetails, collectionId, x + 1);
       }
 
       return res.status(202).send({ statusID: collectionId });
