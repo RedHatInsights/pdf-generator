@@ -2,9 +2,9 @@
 
 ## Prerequisites
 
-1. [API integration](./docs/API-integration.md)
-2. [Local development setup](./docs/local-development-setup.md)
-3. [PDF Template development](./docs/pdf-template-development.md)
+1. [API integration](./API-integration.md)
+2. [Local development setup](./local-development-setup.md)
+3. [PDF Template development](./pdf-template-development.md)
 
 ## Using Chrome UI API
 
