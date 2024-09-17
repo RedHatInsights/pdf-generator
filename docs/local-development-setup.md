@@ -34,7 +34,7 @@ Because the PDF templates embedded into UI repositories, a UI needs to be run lo
 
 1. Create a new JS/TSX file in your repository.
 2. Make sure the new file has a React component as a default export.
-3. Make sure the new file has a named export called `fetchData`. Read more about [data fetching](#data-fetching).
+3. Make sure the new file has a named export called `fetchData`. Read more about [data fetching](./pdf-template-development.md#data-fetching).
 4. in your `fec.config.js` add a new entry to the `moduleFederation.exposes` configuration. Choose a fitting name as a key and path to the created file as a value.
 
 ```js
