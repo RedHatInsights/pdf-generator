@@ -154,8 +154,13 @@ class PdfCache {
     return [];
   }
 
-  // Function to sort PDFComponents by order
+  // Sort the components by their internal `order` and
+  // return the sorted components in ascending order
   private sortComponents(components: PDFComponent[]): PDFComponent[] {
+    // No point in sorting a slice of length 1
+    if (components.length < 2) {
+      return components;
+    }
     return components.slice().sort((a, b) => {
       const orderA = a.order || Number.MAX_VALUE;
       const orderB = b.order || Number.MAX_VALUE;
@@ -163,6 +168,7 @@ class PdfCache {
       return orderA - orderB;
     });
   }
+
   private updateCollectionState(
     collectionId: string,
     status: PdfStatus,

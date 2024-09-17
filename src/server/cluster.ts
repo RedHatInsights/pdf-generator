@@ -5,9 +5,10 @@ const BROWSER_TIMEOUT = 60_000;
 import { CHROMIUM_PATH } from '../browser/helpers';
 
 export const GetPupCluster = async () => {
+  const CONCURRENCY_DEFAULT = 2;
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_CONTEXT,
-    maxConcurrency: 3,
+    maxConcurrency: Number(process.env.MAX_CONCURRENCY) || CONCURRENCY_DEFAULT,
     // If a queued task fails, how many times will it retry before returning an error
     retryLimit: 2,
     puppeteerOptions: {
