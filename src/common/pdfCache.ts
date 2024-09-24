@@ -4,6 +4,7 @@ import PDFMerger from 'pdf-merger-js';
 import { downloadPDF, uploadPDF } from '../common/objectStore';
 import os from 'os';
 import fs from 'fs';
+import { PDFDocument, PDFPage, Color, ColorTypes } from 'pdf-lib';
 
 export enum PdfStatus {
   Generating = 'Generating',
@@ -66,6 +67,36 @@ export type PDFComponent = {
   componentId: string;
   error?: string;
   numPages?: number;
+  order?: number;
+};
+
+const addPageNumbers = async (pdfBuffer: Uint8Array): Promise<Uint8Array> => {
+  // Load the PDF
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+  // Get the number of pages
+  const pageCount = pdfDoc.getPageCount();
+  for (let i = 0; i < pageCount; i++) {
+    const page: PDFPage = pdfDoc.getPage(i);
+    const width = page.getWidth();
+    // Calculate position for page number
+    const xPosition = width / 2 - 10; // Position at the middle
+    const yPosition = 10; // Position from bottom edge (bottom is 0)
+
+    // Add text for page number
+    const black: Color = { red: 0, blue: 0, green: 0, type: ColorTypes.RGB };
+    const fontSize = 8;
+
+    page.drawText(`Page ${i + 1}`, {
+      x: xPosition,
+      y: yPosition,
+      size: fontSize,
+      color: black,
+    });
+  }
+
+  // Save the modified PDF and return as a Uint8Array
+  return await pdfDoc.save();
 };
 
 class PdfCache {
@@ -123,15 +154,19 @@ class PdfCache {
     return [];
   }
 
-  public getTotalPagesForCollection(collectionId: string) {
-    let pageCount = 0;
-    const components = this.getComponents(collectionId);
-    if (components?.length > 1) {
-      components.forEach((n) => {
-        pageCount += n.numPages || 0;
-      });
+  // Sort the components by their internal `order` and
+  // return the sorted components in ascending order
+  private sortComponents(components: PDFComponent[]): PDFComponent[] {
+    // No point in sorting a slice of length 1
+    if (components.length < 2) {
+      return components;
     }
-    return pageCount;
+    return components.slice().sort((a, b) => {
+      const orderA = a.order || Number.MAX_VALUE;
+      const orderB = b.order || Number.MAX_VALUE;
+
+      return orderA - orderB;
+    });
   }
 
   private updateCollectionState(
@@ -178,7 +213,7 @@ class PdfCache {
     this.updateCollectionState(collectionId, PdfStatus.Failed, error);
   }
 
-  public verifyCollection(collectionId: string): void {
+  public async verifyCollection(collectionId: string): Promise<void> {
     if (!this.data[collectionId]) {
       return;
     }
@@ -191,8 +226,8 @@ class PdfCache {
       );
       return;
     }
-    const components = this.data[collectionId].components;
 
+    const components = this.data[collectionId].components;
     for (const component of components) {
       if (component.status === PdfStatus.Failed) {
         this.invalidateCollection(collectionId, component.error || '');
@@ -206,11 +241,10 @@ class PdfCache {
     }
 
     if (this.allComponentsGenerated(collectionId, components)) {
-      this.updateCollectionState(collectionId, PdfStatus.Generated);
       // Everything is generated and looks good, kick off an async job
-      // to store them in a single PDF. Do this in the background
-      // instead of at download time
-      this.mergePDFsFromCompleteCollection(collectionId);
+      // to store them in a single PDF
+      await this.mergePDFsFromCompleteCollection(collectionId);
+      this.updateCollectionState(collectionId, PdfStatus.Generated);
     }
   }
 
@@ -246,18 +280,14 @@ class PdfCache {
   // merge them all before download time since this can take a while.
   // Merging and downloading at the same time can cause timeouts with
   // larger payloads
-  private mergePDFsFromCompleteCollection = async (collectionId: string) => {
+  public mergePDFsFromCompleteCollection = async (collectionId: string) => {
     const collection = this.data[collectionId];
     if (!collection) {
       apiLogger.debug(`No collection found for ${collectionId}`);
       return;
     }
-    if (collection.status !== PdfStatus.Generated) {
-      apiLogger.debug(
-        `Cannot merge an unfinished PDF collection ${collectionId}`
-      );
-      return;
-    }
+    // Sort the pages for the correct finalized PDF order
+    const sortedSlices = this.sortComponents(collection.components);
     apiLogger.debug(`Merging slices for collection ${collectionId}`);
     const tmpdir = `/tmp/${collectionId}-components/*`;
     ensureDirSync(tmpdir);
@@ -266,7 +296,7 @@ class PdfCache {
       // Since we can merge the PDFs without saving them to disk, we
       // can sequentially grab all the s3 stored PDFs as a UINT8 array
       // and merge them in memory much faster than writing to disk
-      for (const component of collection.components) {
+      for (const component of sortedSlices) {
         const response = await downloadPDF(component.componentId);
         const stream = await response?.Body?.transformToByteArray();
         // TODO: It might be better to throw an error if stream is null,
@@ -274,8 +304,9 @@ class PdfCache {
         await merger.add(stream!);
       }
       const buffer = await merger.saveAsBuffer();
+      const completed = await addPageNumbers(buffer);
       const path = `${os.tmpdir()}/${collectionId}`;
-      fs.writeFileSync(path, buffer);
+      fs.writeFileSync(path, completed);
       apiLogger.debug(`${path} written to disk`);
       await uploadPDF(collectionId, path);
       apiLogger.debug(`${collectionId} written to s3`);

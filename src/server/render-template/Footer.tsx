@@ -1,10 +1,5 @@
 import FooterContainer from './FooterContainer';
-import PagesMarker from './PagesMaker';
 
-const Footer = () => (
-  <FooterContainer>
-    <PagesMarker />
-  </FooterContainer>
-);
+const Footer = () => <FooterContainer></FooterContainer>;
 
 export default Footer;

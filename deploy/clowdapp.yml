@@ -110,3 +110,6 @@ parameters:
 - description: Retention time span for pdf in MS (8 hours default)
   name: ENTRY_TIMEOUT
   value: "28800000"
+- description: Amount of worker threads that puppeteer-cluster will use
+  name: MAX_CONCURRENCY
+  value: "2"

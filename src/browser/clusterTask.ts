@@ -14,7 +14,6 @@ import { PDFDocument } from 'pdf-lib';
 
 // Match the timeout on the gateway
 const BROWSER_TIMEOUT = 60_000;
-const pdfCache = PdfCache.getInstance();
 
 const getNewPdfName = (id: string) => {
   const pdfFilename = `report_${id}.pdf`;
@@ -30,20 +29,20 @@ export const generatePdf = async (
     authHeader,
     authCookie,
   }: PdfRequestBody,
-  collectionId: string
+  collectionId: string,
+  order: number
 ): Promise<void> => {
   const pdfPath = getNewPdfName(componentId);
   await cluster.queue(async ({ page }: { page: Page }) => {
     const updateMessage = {
       status: PdfStatus.Generating,
       filepath: '',
+      order: order,
       componentId: componentId,
       collectionId,
     };
     await UpdateStatus(updateMessage);
     await page.setViewport({ width: pageWidth, height: pageHeight });
-    const offsetSize = pdfCache.getTotalPagesForCollection(collectionId);
-    apiLogger.debug(`PDF offset by: ${offsetSize}`);
     // Enables console logging in Headless mode - handy for debugging components
     page.on('console', (msg) => apiLogger.info(`[Headless log] ${msg.text()}`));
 
@@ -122,6 +121,7 @@ export const generatePdf = async (
         filepath: '',
         componentId: componentId,
         error: response,
+        order: order,
       };
       UpdateStatus(updated);
       PdfCache.getInstance().invalidateCollection(collectionId, response);
@@ -138,6 +138,7 @@ export const generatePdf = async (
         status: PdfStatus.Failed,
         filepath: '',
         componentId: componentId,
+        order: order,
         error: pageResponse?.statusText() || 'Page status not found',
       };
       UpdateStatus(updated);
@@ -153,20 +154,6 @@ export const generatePdf = async (
     }
 
     const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
-    // Pain.
-    await page.addStyleTag({
-      content: '.empty-page { page-break-after: always; visibility: hidden; }',
-    });
-    await page.evaluate((offsetSize) => {
-      Array.from({ length: offsetSize }).forEach(() => {
-        const emptyPage = document.createElement('div');
-        emptyPage.className = 'empty-page';
-        emptyPage.textContent = 'empty';
-        document.body.prepend(emptyPage);
-        return emptyPage;
-      });
-    }, offsetSize);
-    const pageRange = `${offsetSize + 1}-`;
 
     try {
       const buffer = await page.pdf({
@@ -180,7 +167,6 @@ export const generatePdf = async (
         displayHeaderFooter: true,
         headerTemplate,
         footerTemplate,
-        pageRanges: pageRange,
         timeout: BROWSER_TIMEOUT,
       });
       await uploadPDF(componentId, pdfPath).catch((error: unknown) => {
@@ -195,6 +181,7 @@ export const generatePdf = async (
         filepath: pdfPath,
         componentId: componentId,
         numPages: numPages,
+        order: order,
       };
       UpdateStatus(updated);
     } catch (error: unknown) {
@@ -203,6 +190,7 @@ export const generatePdf = async (
         status: PdfStatus.Failed,
         filepath: '',
         componentId: componentId,
+        order: order,
         error: JSON.stringify(error),
       };
       UpdateStatus(updated);
