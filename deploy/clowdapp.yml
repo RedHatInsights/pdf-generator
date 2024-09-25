@@ -17,7 +17,6 @@ objects:
       partitions: 1
       topicName: pdf-generator.updated.report
     optionalDependencies:
-    - ros-backend
     - chrome-service
     deployments:
     - name: api
