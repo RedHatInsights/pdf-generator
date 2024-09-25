@@ -18,6 +18,7 @@ objects:
       topicName: pdf-generator.updated.report
     optionalDependencies:
     - chrome-service
+    - rbac
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
