@@ -17,8 +17,8 @@ objects:
       partitions: 1
       topicName: pdf-generator.updated.report
     optionalDependencies:
-    - ros-backend
     - chrome-service
+    - rbac
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
