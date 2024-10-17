@@ -10,6 +10,8 @@ MINIO_SECRET_KEY="minioadmin"
 MAX_CONCURRENCY=2
 ```
 
+Then run
+
 ```
  npm ci
  docker-compose up
@@ -142,4 +144,4 @@ fetch('/api/crc-pdf-generator/v2/download/19f76eab-e3c0-482e-8a66-f02fcb28057f',
   });
 
 ```
-The PDF file will be downloaded in the browser. wow
+The PDF file will be downloaded in the browser.
