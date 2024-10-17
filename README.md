@@ -2,8 +2,16 @@
 
 `crc-pdf-generator` is a NodeJS based service that is responsible for generating a PDF Report.
 
-For local development you can edit the passed data in the `src/index.js` file. Then to view the changes in real time
-in the browser just do:
+For local development you need to create a default `.env` file with the following default credentials (not used in any other environment)
+
+```
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="minioadmin"
+MAX_CONCURRENCY=2
+```
+
+Then run
+
 ```
  npm ci
  docker-compose up
