@@ -19,6 +19,7 @@ objects:
     optionalDependencies:
     - chrome-service
     - rbac
+    - frontend-base
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
