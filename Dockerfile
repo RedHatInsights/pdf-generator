@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1052.1724178568 
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1130 
 
 USER 0
 
