@@ -19,6 +19,7 @@ objects:
     optionalDependencies:
     - chrome-service
     - rbac
+    - advisor-backend
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
