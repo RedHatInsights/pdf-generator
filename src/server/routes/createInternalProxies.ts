@@ -3,14 +3,17 @@ import instanceConfig from '../../common/config';
 import { ServiceNames } from '../../integration/endpoints';
 import { Endpoint } from 'app-common-js';
 import { apiLogger } from '../../common/logging';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const API_HOST = instanceConfig.scalprum.apiHost;
+const PROXY_AGENT = instanceConfig.scalprum.proxyAgent;
 
 function createInternalProxies() {
   // skip internal routing if API_HOST is set
   if (API_HOST && API_HOST !== 'blank') {
     const internalRegEx = /^\/internal\/[^/]+/;
     const proxy = createProxyMiddleware({
+      ...(PROXY_AGENT ? { agent: new HttpsProxyAgent(PROXY_AGENT) } : {}),
       logger: apiLogger,
       target: API_HOST,
       changeOrigin: true,
