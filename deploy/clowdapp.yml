@@ -20,6 +20,7 @@ objects:
     - chrome-service
     - rbac
     - advisor-backend
+    - vulnerability-engine
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
