@@ -78,7 +78,7 @@ module.exports = {
 }
 ```
 
-### Asset proxy setup.
+### Asset proxy setup
 
 This section has two configurations:
 
@@ -109,6 +109,19 @@ module.exports = {
   }
 }
 
+```
+
+## Proxy agent setup
+You will need to instruct PDF generator to use the squid proxy URL and port if proxying API requests to stage
+
+```shell
+PROXY_AGENT=... npm run start:server
+```
+
+Without `PROXY_AGENT` pointing to the squid proxy, you will likely notice 403's when fetching stage assets:
+```shell
+[1] info: [HPM] GET /internal/chrome-service/api/chrome-service/v1/static/beta/stage/services/services-generated.json -> https://console.stage.redhat.com/api/chrome-service/v1/static/beta/stage/services/services-generated.json [403]
+[1] info: [Headless log] Failed to load resource: the server responded with a status of 403 (Forbidden)
 ```
 
 ## Starting the PDF generator development service
