@@ -4,7 +4,7 @@ export enum ServiceNames {
   'ros-backend' = 'ros-backend',
   'chrome-service' = 'chrome-service',
   'advisor-backend' = 'advisor',
-  'vulnerability-engine' = 'vulnerability',
+  'vulnerability-engine' = 'vulnerability-engine',
 }
 
 export type ServicesEndpoints = {
