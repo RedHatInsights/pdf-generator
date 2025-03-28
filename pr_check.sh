@@ -6,6 +6,7 @@
 export APP_NAME="crc-pdf-generator"  # name of app-sre "application" folder this component lives in
 export COMPONENT_NAME="crc-pdf-generator"  # name of app-sre "resourceTemplate" in deploy.yaml for this component
 export IMAGE="https://quay.io/repository/redhat-user-workloads/hcc-platex-services-tenant/pdf-generator/pdf-generator"
+export IMAGE_TAG="on-pr-$(git rev-parse HEAD)"
 export WORKSPACE=${WORKSPACE:-$APP_ROOT}  # if running in jenkins, use the build's workspace
 export APP_ROOT=$(pwd)
 # Don't deploy all the dependencies

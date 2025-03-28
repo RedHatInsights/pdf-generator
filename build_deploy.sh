@@ -3,7 +3,7 @@
 set -exv
 
 IMAGE="https://quay.io/repository/redhat-user-workloads/hcc-platex-services-tenant/pdf-generator/pdf-generator"
-IMAGE_TAG=$(git rev-parse --short=7 HEAD)
+IMAGE_TAG=$(git rev-parse HEAD)
 SECURITY_COMPLIANCE_TAG="sc-$(date +%Y%m%d)-$(git rev-parse --short=7 HEAD)"
 SMOKE_TEST_TAG="latest"
 
