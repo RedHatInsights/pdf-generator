@@ -4,3 +4,7 @@ build
 npm-debug.log
 .bash_history
 Dockerfile
+.docker
+.podman
+.kube
+.git
