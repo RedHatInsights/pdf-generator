@@ -6,6 +6,8 @@ WORKDIR /pdf-gen
 ADD . /pdf-gen
 RUN mkdir -p /pdf-gen/bin
 
+RUN microdnf update -y
+
 RUN microdnf install -y git make tar
 RUN curl -L https://git.io/n-install --output n-install
 RUN chmod +x n-install && yes y | ./n-install
