@@ -28,3 +28,9 @@ public/*
 
 # Local minio dir
 start
+
+# Some local stuff
+.hypothesis
+
+# Any tarballs dropped by IQE
+*.tar.gz
