@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1179.1741863533
 USER 0
 
 WORKDIR /pdf-gen
-ADD . /pdf-gen
+ADD pdf-generator /pdf-gen
 RUN mkdir -p /pdf-gen/bin
 
 RUN microdnf install -y git make tar
