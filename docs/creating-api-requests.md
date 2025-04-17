@@ -78,3 +78,20 @@ requestPdf({
 Once the PDF is generated, it will be automatically downloaded. If the process fails, an error is thrown and has to be handled by the code that initiated the request.
 
 > NOTE: Integration with chrome notifications system will follow as soon as it is available.
+
+### Additional Parameters
+`additionalData`: If you have data that cannot be imported directly into the template, you can pass it in to the template as a key value pair:
+
+```TSX
+requestPdf({
+  filename: 'chrome-api.pdf'
+  payload: {
+    manifestLocation: "/apps/landing/fed-mods.json",
+    scope: "landing",
+    module: "./IntroPage",
+    additionalData: {
+      renderPicture: true,
+      supportCasesOpen: 20,
+    }
+  }
+```

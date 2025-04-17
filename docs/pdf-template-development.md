@@ -256,3 +256,26 @@ If the promise or the component rendering fails, the whole PDF generation proces
 Feel free to add any static elements to the template to comply with the requirements. Any valid React component is accepted. CSS is supported and properly scoped.
 
 Only restriction is the usage of data fetching from inside the PDF template.
+
+### Additional Data
+
+If your template requires additional data, you can either:
+- Import the object into the template file.
+- Pass it through the requestPDF function with the `additionalData` prop.
+
+```TSX
+const PDFTemplate = ({ asyncData, additionalData }) => {
+  const { data } = asyncData
+  const { additionalData } = additionalData
+  return (
+    <div>
+      {/** use the data */}
+      {data.map((entry) => ...)}
+      {additionalData}
+    </div>
+  )
+}
+
+export default PDFTemplate;
+
+```
