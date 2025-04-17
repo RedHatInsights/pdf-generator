@@ -261,12 +261,12 @@ Only restriction is the usage of data fetching from inside the PDF template.
 
 If your template requires additional data, you can either:
 - Import the object into the template file.
-- Pass it through the requestPDF function with the `staticData` prop.
+- Pass it through the requestPDF function with the `additionalData` prop.
 
 ```TSX
-const PDFTemplate = ({ asyncData, staticData }) => {
+const PDFTemplate = ({ asyncData, additionalData }) => {
   const { data } = asyncData
-  const { additionalData } = staticData
+  const { additionalData } = additionalData
   return (
     <div>
       {/** use the data */}

@@ -340,7 +340,7 @@
             "type": "object",
             "description": "parameters to be passed to the fetchData function"
           },
-          "staticData": {
+          "additionalData": {
             "type": "object",
             "description": "additional data required by the template"
           }
@@ -353,7 +353,7 @@
             "limit": 10,
             "offset": 0
           },
-          "staticData": {
+          "additionalData": {
             "customerStatus": "active"
           }
         }

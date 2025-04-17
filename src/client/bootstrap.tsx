@@ -24,8 +24,8 @@ try {
   if (typeof state.fetchDataParams === 'string') {
     state.fetchDataParams = JSON.parse(state.fetchDataParams);
   }
-  if (typeof state.staticData === 'string') {
-    state.staticData = JSON.parse(state.staticData);
+  if (typeof state.additionalData === 'string') {
+    state.additionalData = JSON.parse(state.additionalData);
   }
 } catch (e) {
   console.error('Error parsing state params', JSON.stringify(e));
@@ -135,12 +135,12 @@ const MetadataWrapper = () => {
 
   const props: ScalprumComponentProps<
     Record<string, any>,
-    { astaticData: { data: unknown },
-      staticData: Record<string, unknown> | undefined,
+    { aadditionalData: { data: unknown },
+      additionalData: Record<string, unknown> | undefined,
     }
   > = {
-    astaticData: { data },
-    staticData: state.staticData,
+    aadditionalData: { data },
+    additionalData: state.additionalData,
     scope: state.scope,
     module: state.module,
     importName: state.importName,

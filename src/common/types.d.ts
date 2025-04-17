@@ -13,7 +13,7 @@ export type GeneratePayload = {
   importName?: string;
   authHeader?: string;
   fetchDataParams?: Record<string, unknown>;
-  staticData?: Record<string, unknown>;
+  additionalData?: Record<string, unknown>;
   identity?: string;
   authCookie?: string;
 };

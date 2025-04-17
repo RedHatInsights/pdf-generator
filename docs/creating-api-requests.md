@@ -80,7 +80,7 @@ Once the PDF is generated, it will be automatically downloaded. If the process f
 > NOTE: Integration with chrome notifications system will follow as soon as it is available.
 
 ### Additional Parameters
-`staticData`: If you have data that cannot be imported directly into the template, you can pass it in to the template as a key value pair:
+`additionalData`: If you have data that cannot be imported directly into the template, you can pass it in to the template as a key value pair:
 
 ```TSX
 requestPdf({
@@ -89,7 +89,7 @@ requestPdf({
     manifestLocation: "/apps/landing/fed-mods.json",
     scope: "landing",
     module: "./IntroPage",
-    staticData: {
+    additionalData: {
       renderPicture: true,
       supportCasesOpen: 20,
     }
