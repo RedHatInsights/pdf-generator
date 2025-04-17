@@ -335,12 +335,27 @@
           "module": {
             "type": "string",
             "description": "federated module name"
+          },
+          "fetchDataParams": {
+            "type": "object",
+            "description": "parameters to be passed to the fetchData function"
+          },
+          "staticData": {
+            "type": "object",
+            "description": "additional data required by the template"
           }
         },
         "example": {
           "manifestLocation": "/apps/landing/fed-mods.json",
           "scope": "landing",
-          "module": "./PdfEntry"
+          "module": "./PdfEntry",
+          "fetchDataParams": {
+            "limit": 10,
+            "offset": 0
+          },
+          "staticData": {
+            "customerStatus": "active"
+          }
         }
       },
       "PdfDetails": {
