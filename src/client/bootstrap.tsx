@@ -135,8 +135,9 @@ const MetadataWrapper = () => {
 
   const props: ScalprumComponentProps<
     Record<string, any>,
-    { aadditionalData: { data: unknown },
-      additionalData: Record<string, unknown> | undefined,
+    {
+      aadditionalData: { data: unknown };
+      additionalData: Record<string, unknown> | undefined;
     }
   > = {
     aadditionalData: { data },

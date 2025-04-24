@@ -117,8 +117,14 @@ function addProxy(req: GenerateHandlerRequest) {
 }
 
 function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
-  const { manifestLocation, module, scope, fetchDataParams, additionalData, importName } =
-    payload;
+  const {
+    manifestLocation,
+    module,
+    scope,
+    fetchDataParams,
+    additionalData,
+    importName,
+  } = payload;
   const uuid = crypto.randomUUID();
   const requestURL = new URL(`http://localhost:${config?.webPort}/puppeteer`);
   requestURL.searchParams.append('manifestLocation', manifestLocation);
@@ -134,7 +140,10 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
     );
   }
   if (additionalData) {
-    requestURL.searchParams.append('additionalData', JSON.stringify(payload.additionalData));
+    requestURL.searchParams.append(
+      'additionalData',
+      JSON.stringify(payload.additionalData)
+    );
   }
 
   return {
