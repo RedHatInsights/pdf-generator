@@ -20,6 +20,13 @@ declare global {
 }
 
 const state = window.__initialState__;
+if (typeof state.fetchDataParams === 'string') {
+  state.fetchDataParams = JSON.parse(state.fetchDataParams);
+}
+if (typeof state.additionalData === 'string') {
+  state.additionalData = JSON.parse(state.additionalData);
+}
+
 const config: AppsConfig = {
   [state.scope]: {
     name: state.scope,
@@ -124,9 +131,13 @@ const MetadataWrapper = () => {
 
   const props: ScalprumComponentProps<
     Record<string, any>,
-    { asyncData: { data: unknown } }
+    {
+      asyncData: { data: unknown };
+      additionalData: Record<string, unknown> | undefined;
+    }
   > = {
     asyncData: { data },
+    additionalData: state.additionalData,
     scope: state.scope,
     module: state.module,
     importName: state.importName,
