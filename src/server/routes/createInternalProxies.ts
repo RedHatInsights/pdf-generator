@@ -45,7 +45,7 @@ function createInternalProxies() {
           [`^/internal/${serviceName}`]: '',
         },
       });
-    }
+    },
   );
 
   return internalProxies;

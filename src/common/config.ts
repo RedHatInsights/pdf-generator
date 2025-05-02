@@ -165,7 +165,7 @@ function initializeConfig() {
         try {
           fs.writeFileSync(
             '/tmp/kafkaca',
-            clowderConfig.kafka.brokers[0].cacert
+            clowderConfig.kafka.brokers[0].cacert,
           );
         } catch (error) {
           console.log(error);
@@ -178,7 +178,7 @@ function initializeConfig() {
       };
     }
     return config;
-  } catch (error) {
+  } catch {
     return defaultConfig;
   }
 }

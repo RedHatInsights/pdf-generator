@@ -21,7 +21,7 @@ describe('Pdf Cache updates', () => {
     const coll = pdfCache.getCollection(baseId);
     expect(coll.components.length).toBe(1);
     expect(coll.components[0].componentId).toBe(
-      'fb99bc16-4cdc-4200-afbf-479d904ee987'
+      'fb99bc16-4cdc-4200-afbf-479d904ee987',
     );
   });
 

@@ -31,7 +31,7 @@ const previewPdf = async (url: string) => {
 
     // Enables console logging in Headless mode - handy for debugging components
     page.on('console', (msg) =>
-      apiLogger.debug(`[Headless log] ${msg.text()}`)
+      apiLogger.debug(`[Headless log] ${msg.text()}`),
     );
     await page.setViewport({ width: pageWidth, height: pageHeight });
     const extraHeaders: Record<string, string> = {};
@@ -57,7 +57,7 @@ const previewPdf = async (url: string) => {
           pageWidth,
           pageHeight,
         },
-      })
+      }),
     );
 
     const pdfBuffer = await page.pdf({
@@ -74,7 +74,7 @@ const previewPdf = async (url: string) => {
 
     if (!pageStatus?.ok()) {
       throw new Error(
-        `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`
+        `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`,
       );
     }
 

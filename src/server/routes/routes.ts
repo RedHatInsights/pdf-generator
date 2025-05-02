@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import 'dotenv/config';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -41,14 +40,14 @@ function addProxy(req: GenerateHandlerRequest) {
       const apiHost = 'https' + '://' + req.get('host');
       config.scalprum.apiHost = apiHost;
       apiLogger.debug(
-        `The variable apiHost is not in config! Falling back to request origin host: ${apiHost}`
+        `The variable apiHost is not in config! Falling back to request origin host: ${apiHost}`,
       );
     }
     if (config.scalprum.assetsHost === 'blank') {
       const assetsHost = 'https' + '://' + req.get('host');
       config.scalprum.assetsHost = assetsHost;
       apiLogger.debug(
-        `The variable assetsHost is not in config! Falling back to request origin host: ${assetsHost}`
+        `The variable assetsHost is not in config! Falling back to request origin host: ${assetsHost}`,
       );
     }
     const assetsProxy = createProxyMiddleware({
@@ -61,7 +60,7 @@ function addProxy(req: GenerateHandlerRequest) {
         proxyReq: (proxyReq) => {
           const strippedHost = config.scalprum.assetsHost.replace(
             /^https?:\/\//,
-            ''
+            '',
           );
           proxyReq.setHeader('Origin', config.scalprum.assetsHost);
           proxyReq.setHeader('Host', strippedHost);
@@ -89,12 +88,12 @@ function addProxy(req: GenerateHandlerRequest) {
           proxyReq: (proxyReq) => {
             console.log('THIS SHOULD NOT BE HERE');
             const authHeader = proxyReq.getHeader(
-              config.AUTHORIZATION_CONTEXT_KEY
+              config.AUTHORIZATION_CONTEXT_KEY,
             );
 
             const strippedHost = config.scalprum.apiHost.replace(
               /^https?:\/\//,
-              ''
+              '',
             );
             proxyReq.setHeader('Origin', config.scalprum.apiHost);
             proxyReq.setHeader('Host', strippedHost);
@@ -136,13 +135,13 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
   if (fetchDataParams) {
     requestURL.searchParams.append(
       'fetchDataParams',
-      JSON.stringify(fetchDataParams)
+      JSON.stringify(fetchDataParams),
     );
   }
   if (additionalData) {
     requestURL.searchParams.append(
       'additionalData',
-      JSON.stringify(payload.additionalData)
+      JSON.stringify(payload.additionalData),
     );
   }
 
@@ -180,8 +179,8 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
     // render error to DOM to retrieve the error content from puppeteer
     res.send(
       `<div id="report-error" data-error="${JSON.stringify(
-        error
-      )}">${error}</div>`
+        error,
+      )}">${error}</div>`,
     );
   }
 });
@@ -250,7 +249,7 @@ router.post(
       apiLogger.debug('task finished');
       apiLogger.debug(JSON.stringify(pdfCache));
     }
-  }
+  },
 );
 
 router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
@@ -310,14 +309,14 @@ router.get(
         },
       });
     }
-  }
+  },
 );
 
 router.post(
   `${config?.APIPrefix}/v1/generate`,
   async (_req: GenerateHandlerRequest, res) => {
     res.status(400).send('This endpoint is deprecated. Please use /v2/create');
-  }
+  },
 );
 
 router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
@@ -328,7 +327,7 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
   pdfUrl.searchParams.append('module', req.query.module);
   pdfUrl.searchParams.append(
     'identity',
-    httpContext.get(config?.IDENTITY_HEADER_KEY) as string
+    httpContext.get(config?.IDENTITY_HEADER_KEY) as string,
   );
   if (req.query.importName) {
     pdfUrl.searchParams.append('importName', req.query.importName);
@@ -336,7 +335,7 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
   if (req.query.fetchDataParams) {
     pdfUrl.searchParams.append(
       'fetchDataParams',
-      JSON.stringify(req.query.fetchDataParams)
+      JSON.stringify(req.query.fetchDataParams),
     );
   }
 
@@ -365,7 +364,7 @@ router.get(`${config?.APIPrefix}/v1/openapi.json`, (_req, res, _next) => {
       return res
         .status(500)
         .send(
-          `An error occurred while fetching the OpenAPI spec : ${err.message}`
+          `An error occurred while fetching the OpenAPI spec : ${err.message}`,
         );
     } else {
       return res.json(JSON.parse(data));
