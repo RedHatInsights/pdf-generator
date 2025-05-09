@@ -28,7 +28,7 @@ export function sanitizeString(value: unknown): unknown {
   if (typeof value === 'string') {
     return value.replace(
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      ''
+      '',
     );
   }
   return value;
@@ -36,7 +36,7 @@ export function sanitizeString(value: unknown): unknown {
 
 // Function to sanitize a Record<string, unknown>
 export function sanitizeRecord(
-  record: Record<string, unknown>
+  record: Record<string, unknown>,
 ): Record<string, unknown> {
   const sanitizedRecord: Record<string, unknown> = {};
   Object.keys(record).forEach((key) => {

@@ -41,8 +41,8 @@ const formatTimeToEnglish = (milliseconds: number): string => {
     largestUnit === 'hours'
       ? hours
       : largestUnit === 'minutes'
-      ? minutes
-      : seconds
+        ? minutes
+        : seconds,
   )} ${largestUnit}`;
 };
 
@@ -134,7 +134,7 @@ class PdfCache {
     this.data[collectionId].components = this.data[
       collectionId
     ].components.filter(
-      ({ componentId }) => componentId !== status.componentId
+      ({ componentId }) => componentId !== status.componentId,
     );
     this.data[collectionId].components.push(status);
   }
@@ -172,7 +172,7 @@ class PdfCache {
   private updateCollectionState(
     collectionId: string,
     status: PdfStatus,
-    error?: string
+    error?: string,
   ): void {
     if (!this.data[collectionId]) {
       throw new Error('Collection not found');
@@ -184,7 +184,7 @@ class PdfCache {
           ...component,
           status,
         };
-      }
+      },
     );
     this.data[collectionId].status = status;
     this.data[collectionId].error = error;
@@ -222,7 +222,7 @@ class PdfCache {
     // trigger an extra merge when the status endpoint is hit.
     if (this.data[collectionId].status === PdfStatus.Generated) {
       apiLogger.debug(
-        `Collection ${collectionId} already registered as generated`
+        `Collection ${collectionId} already registered as generated`,
       );
       return;
     }
@@ -250,11 +250,11 @@ class PdfCache {
 
   private allComponentsGenerated(
     collectionId: string,
-    components: PDFComponent[]
+    components: PDFComponent[],
   ) {
     if (
       components.every(
-        (component) => component.status === PdfStatus.Generated
+        (component) => component.status === PdfStatus.Generated,
       ) &&
       this.data[collectionId].expectedLength === components.length
     ) {
@@ -266,8 +266,8 @@ class PdfCache {
   public cleanExpiredCollection(uuid: string) {
     apiLogger.debug(
       `Timeout for ${uuid} has been set to ${formatTimeToEnglish(
-        ENTRY_TIMEOUT
-      )}`
+        ENTRY_TIMEOUT,
+      )}`,
     );
     setTimeout(() => {
       // This should potentially also call the objectStore to remove the PDF(s)
@@ -304,7 +304,7 @@ class PdfCache {
         await merger.add(stream!);
       }
       const buffer = await merger.saveAsBuffer();
-      const completed = await addPageNumbers(buffer);
+      const completed = await addPageNumbers(new Uint8Array(buffer));
       const path = `${os.tmpdir()}/${collectionId}`;
       fs.writeFileSync(path, completed);
       apiLogger.debug(`${path} written to disk`);

@@ -36,13 +36,13 @@ const config: AppsConfig = {
 
 type CreateAxiosRequest = (
   service: ServiceNames,
-  config: AxiosRequestConfig
+  config: AxiosRequestConfig,
 ) => Promise<unknown>;
 
 function createAxiosRequest(service: ServiceNames, config: AxiosRequestConfig) {
   if (window.IS_PRODUCTION && !window.__endpoints__[service]) {
     const message = `createAxiosRequest: Service ${service} not found! Available services: ${Object.keys(
-      window.__endpoints__
+      window.__endpoints__,
     ).join(', ')}.\n You might need to add service integration in the config.`;
     throw new Error(message);
   }
@@ -61,7 +61,7 @@ function createAxiosRequest(service: ServiceNames, config: AxiosRequestConfig) {
 
 type FetchData = (
   createAsyncRequest: CreateAxiosRequest,
-  options?: GeneratePayload['fetchDataParams']
+  options?: GeneratePayload['fetchDataParams'],
 ) => Promise<unknown>;
 
 type AsyncState = {
@@ -103,7 +103,7 @@ const MetadataWrapper = () => {
       const fn = await getModule<FetchData | undefined>(
         state.scope,
         state.module,
-        'fetchData'
+        'fetchData',
       );
       if (!fn) {
         setAsyncState({ loading: false, error: null, data: null });
