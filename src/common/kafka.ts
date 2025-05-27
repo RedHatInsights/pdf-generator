@@ -109,12 +109,11 @@ export async function consumeMessages(topic: string) {
 
   await consumer.run({
     // ESlint is upset here but it has to be async due to kafkajs
-    // eslint-disable-next-line @typescript-eslint/require-await
     eachMessage: async ({ message }) => {
       apiLogger.debug(
         JSON.stringify({
           value: message.value?.toString(),
-        })
+        }),
       );
       const cacheObject = JSON.parse(message.value?.toString() as string);
       let updateMessage;
@@ -125,7 +124,7 @@ export async function consumeMessages(topic: string) {
         ) {
           updateMessage = cacheObject as PDFComponent;
           apiLogger.debug(
-            `Updated message for collection ${updateMessage.collectionId}`
+            `Updated message for collection ${updateMessage.collectionId}`,
           );
         } else {
           throw new Error('Invalid message format');

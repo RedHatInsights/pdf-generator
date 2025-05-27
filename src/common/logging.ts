@@ -24,7 +24,7 @@ export const apiLogger = winston.createLogger({
   level: config?.LOG_LEVEL,
   format: winston.format.combine(
     winston.format.colorize(),
-    winston.format.simple()
+    winston.format.simple(),
   ),
   transports: [new winston.transports.Console()],
 });
@@ -38,7 +38,7 @@ export const requestLogger = expressWinston.logger({
   requestWhitelist: ['url', 'method', 'httpVersion', 'originalUrl', 'query'],
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   meta: false,
   msg: 'HTTP {{req.method}} {{res.statusCode}} {{req.url}}',

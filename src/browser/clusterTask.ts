@@ -30,7 +30,7 @@ export const generatePdf = async (
     authCookie,
   }: PdfRequestBody,
   collectionId: string,
-  order: number
+  order: number,
 ): Promise<void> => {
   const pdfPath = getNewPdfName(componentId);
   await cluster.queue(async ({ page }: { page: Page }) => {
@@ -54,7 +54,7 @@ export const generatePdf = async (
           pageWidth,
           pageHeight,
         },
-      })
+      }),
     );
 
     const extraHeaders: Record<string, string> = {};
@@ -128,7 +128,7 @@ export const generatePdf = async (
       throw new PdfGenerationError(
         collectionId,
         componentId,
-        `Page render error: ${response}`
+        `Page render error: ${response}`,
       );
     }
     if (!pageStatus || !isValidPageResponse(pageStatus)) {
@@ -144,12 +144,12 @@ export const generatePdf = async (
       UpdateStatus(updated);
       PdfCache.getInstance().invalidateCollection(
         collectionId,
-        pageResponse?.statusText() || 'Page status not found'
+        pageResponse?.statusText() || 'Page status not found',
       );
       throw new PdfGenerationError(
         collectionId,
         componentId,
-        `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`
+        `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
       );
     }
 
@@ -196,12 +196,12 @@ export const generatePdf = async (
       UpdateStatus(updated);
       PdfCache.getInstance().invalidateCollection(
         collectionId,
-        JSON.stringify(error)
+        JSON.stringify(error),
       );
       throw new PdfGenerationError(
         collectionId,
         componentId,
-        `Failed to print pdf: ${JSON.stringify(error)}`
+        `Failed to print pdf: ${JSON.stringify(error)}`,
       );
     } finally {
       await page.close();
