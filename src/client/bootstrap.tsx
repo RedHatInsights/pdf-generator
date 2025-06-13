@@ -153,7 +153,32 @@ const MetadataWrapper = () => {
 
 const App = () => {
   return (
-    <ScalprumProvider config={config}>
+    <ScalprumProvider
+      config={config}
+      pluginSDKOptions={{
+        pluginLoaderOptions: {
+          transformPluginManifest: (manifest) => {
+            const newManifest = {
+              ...manifest,
+            };
+            // Adjust the base URL to manifest location public path
+            if (manifest.baseURL === 'auto') {
+              const manifestLocation = config[manifest.name]?.manifestLocation;
+              if (manifestLocation) {
+                const fragments = state.manifestLocation.split('/');
+                fragments.pop();
+                const baseURL = fragments.join('/') + '/';
+                newManifest.baseURL = baseURL;
+                newManifest.loadScripts = manifest.loadScripts.map(
+                  (script) => `${baseURL}${script}`,
+                );
+              }
+            }
+            return newManifest;
+          },
+        },
+      }}
+    >
       <MetadataWrapper />
     </ScalprumProvider>
   );
