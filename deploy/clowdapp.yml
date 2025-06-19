@@ -21,6 +21,7 @@ objects:
     - rbac
     - advisor-backend
     - vulnerability-engine
+    - ros-backend
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
