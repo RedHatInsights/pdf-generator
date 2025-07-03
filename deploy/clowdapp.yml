@@ -18,6 +18,7 @@ objects:
       topicName: pdf-generator.updated.report
     optionalDependencies:
     - chrome-service
+    - compliance-backend
     - rbac
     - advisor-backend
     - vulnerability-engine

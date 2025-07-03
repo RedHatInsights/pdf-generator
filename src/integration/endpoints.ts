@@ -5,6 +5,7 @@ export enum ServiceNames {
   'chrome-service' = 'chrome-service',
   'advisor-backend' = 'advisor-backend',
   'vulnerability-engine' = 'vulnerability-engine',
+  'compliance-backend' = 'compliance-backend',
 }
 
 export type ServicesEndpoints = {
