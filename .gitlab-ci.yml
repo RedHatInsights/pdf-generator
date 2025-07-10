@@ -1,5 +1,5 @@
 default:
-  image: registry.access.redhat.com/ubi8/python-38
+  image: registry.access.redhat.com/ubi9/python-39
 
 before_script:
   - pip install flake8
