@@ -165,7 +165,7 @@ export const generatePdf = async (
           top: '54px',
           bottom: '54px',
         },
-        landscape: landscape,
+        landscape,
         displayHeaderFooter: true,
         headerTemplate,
         footerTemplate,
