@@ -13,6 +13,7 @@ export type GeneratePayload = {
   authHeader?: string;
   fetchDataParams?: Record<string, unknown>;
   additionalData?: Record<string, unknown>;
+  landscape?: boolean;
   identity?: string;
   authCookie?: string;
 };
