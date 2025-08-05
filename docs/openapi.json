@@ -343,6 +343,11 @@
           "additionalData": {
             "type": "object",
             "description": "additional data required by the template"
+          },
+          "landscape": {
+            "type": "boolean",
+            "default": false,
+            "description": "is your pdf read like a novel or a powerpoint?"
           }
         },
         "example": {
@@ -355,7 +360,8 @@
           },
           "additionalData": {
             "customerStatus": "active"
-          }
+          },
+          "landscape": true
         }
       },
       "PdfDetails": {
