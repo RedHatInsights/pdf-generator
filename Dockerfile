@@ -9,7 +9,7 @@ RUN mkdir -p /pdf-gen/bin
 RUN microdnf install -y git make tar
 RUN curl -L https://git.io/n-install --output n-install
 RUN chmod +x n-install && yes y | ./n-install
-RUN $HOME/n/bin/n 20
+RUN $HOME/n/bin/n 22
 
 ENV XDG_CONFIG_HOME="/tmp/.chromium"
 ENV XDG_CACHE_HOME="/tmp/.chromium"

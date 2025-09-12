@@ -26,5 +26,8 @@ public/*
 # Snyk
 .dccache
 
+# Grype
+grype.yml
+
 # Local minio dir
 start
