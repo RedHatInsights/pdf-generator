@@ -17,7 +17,7 @@
     "@types/node-fetch": "^2.6.11",
     "app-common-js": "^2.2.4",
     "atob": "^2.1.2",
-    "axios": "^1.8.4",
+    "axios": "^1.12.1",
     "bluebird": "^3.7.2",
     "bufferutil": "^4.0.8",
     "cookie-parser": "^1.4.6",
