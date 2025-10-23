@@ -23,7 +23,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "cross-spawn": "^7.0.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.0.0",
     "encoding": "^0.1.13",
     "express": "^4.19.2",
     "express-http-context": "^1.2.4",
