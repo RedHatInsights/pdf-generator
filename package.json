@@ -11,7 +11,7 @@
     "@patternfly/patternfly": "^5.3.0",
     "@quobix/vacuum": "^0.17.11",
     "@scalprum/core": "^0.8.3",
-    "@scalprum/react-core": "^0.9.5",
+    "@scalprum/react-core": "^0.11.0",
     "@smithy/node-http-handler": "^3.2.0",
     "@types/lodash": "^4.17.0",
     "@types/node-fetch": "^2.6.11",
