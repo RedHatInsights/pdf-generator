@@ -10,7 +10,7 @@
     "@openshift/dynamic-plugin-sdk": "^5.0.1",
     "@patternfly/patternfly": "^6.4.0",
     "pf-5-styles": "npm:@patternfly/patternfly@^5.4.2",
-    "@quobix/vacuum": "^0.17.11",
+    "@quobix/vacuum": "^0.20.0",
     "@scalprum/core": "^0.8.3",
     "@scalprum/react-core": "^0.11.0",
     "@smithy/node-http-handler": "^3.2.0",
