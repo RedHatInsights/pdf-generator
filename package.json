@@ -6,7 +6,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.930.0",
+    "@aws-sdk/client-s3": "^3.932.0",
     "@openshift/dynamic-plugin-sdk": "^5.0.1",
     "@quobix/vacuum": "^0.20.2",
     "@patternfly/patternfly": "^6.4.0",
@@ -30,7 +30,7 @@
     "express-http-context": "^1.2.5",
     "express-prom-bundle": "^7.0.2",
     "express-winston": "^4.2.0",
-    "form-data": "^4.0.4",
+    "form-data": "^4.0.5",
     "fs-extra": "^11.3.2",
     "glob": "^10.4.5",
     "http-proxy-middleware": "^3.0.5",
@@ -52,7 +52,7 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@redhat-cloud-services/eslint-config-redhat-cloud-services": "^3.0.1",
-    "@swc/core": "^1.15.1",
+    "@swc/core": "^1.15.2",
     "@types/atob": "^2.1.4",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
