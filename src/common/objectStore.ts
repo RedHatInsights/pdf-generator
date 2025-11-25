@@ -1,5 +1,6 @@
 import { apiLogger } from './logging';
 import config from './config';
+import { Readable } from 'stream';
 import {
   S3Client,
   PutObjectCommand,
@@ -124,7 +125,10 @@ export const downloadPDF = async (id: string) => {
       Key: `${id}.pdf`,
     };
     const response = await s3.send(new GetObjectCommand(downloadParams));
-    return response;
+    if (!response.Body) {
+      return;
+    }
+    return response.Body as Readable;
   } catch (error) {
     apiLogger.debug(`Error downloading file: ${error}`);
   }

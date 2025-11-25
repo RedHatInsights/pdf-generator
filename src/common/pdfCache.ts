@@ -4,6 +4,7 @@ import PDFMerger from 'pdf-merger-js';
 import { downloadPDF, uploadPDF } from '../common/objectStore';
 import os from 'os';
 import fs from 'fs';
+import { arrayBuffer as ArrayBuffer } from 'node:stream/consumers';
 import { PDFDocument, PDFPage, Color, ColorTypes } from 'pdf-lib';
 
 export enum PdfStatus {
@@ -297,11 +298,11 @@ class PdfCache {
       // can sequentially grab all the s3 stored PDFs as a UINT8 array
       // and merge them in memory much faster than writing to disk
       for (const component of sortedSlices) {
-        const response = await downloadPDF(component.componentId);
-        const stream = await response?.Body?.transformToByteArray();
-        // TODO: It might be better to throw an error if stream is null,
+        const pdfReadable = await downloadPDF(component.componentId);
+        // TODO: It might be better to throw an error if readable is null,
         // but the error passes down more accurately this way
-        await merger.add(stream!);
+        const pdfBuffer = await ArrayBuffer(pdfReadable!);
+        await merger.add(pdfBuffer);
       }
       const buffer = await merger.saveAsBuffer();
       const completed = await addPageNumbers(new Uint8Array(buffer));
