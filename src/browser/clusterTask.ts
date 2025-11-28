@@ -5,7 +5,7 @@ import { pageHeight, pageWidth, setWindowProperty } from './helpers';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import config from '../common/config';
-import { uploadPDF } from '../common/objectStore';
+import { store } from '../common/store';
 import { UpdateStatus, isValidPageResponse } from '../server/utils';
 import { PdfGenerationError } from '../server/errors';
 import { cluster } from '../server/cluster';
@@ -171,7 +171,7 @@ export const generatePdf = async (
         footerTemplate,
         timeout: BROWSER_TIMEOUT,
       });
-      await uploadPDF(componentId, pdfPath).catch((error: unknown) => {
+      await store.uploadPDF(componentId, pdfPath).catch((error: unknown) => {
         apiLogger.error(`Failed to upload PDF: ${error}`);
       });
       const pdfDoc = await PDFDocument.load(buffer);

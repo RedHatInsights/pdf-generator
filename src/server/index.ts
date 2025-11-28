@@ -9,6 +9,7 @@ import router from './routes/routes';
 import identityMiddleware from '../middleware/identity-middleware';
 import { requestLogger, apiLogger } from '../common/logging';
 import PdfCache from '../common/pdfCache';
+import { store } from '../common/store/store';
 import { consumeMessages } from '../common/kafka';
 import { UPDATE_TOPIC } from '../browser/constants';
 
@@ -27,6 +28,7 @@ router.use('/public', express.static(path.resolve(__dirname, './public')));
 app.use('/', router);
 
 PdfCache.getInstance();
+store.intialize('s3');
 
 const server = http.createServer({}, app).listen(PORT, () => {
   apiLogger.info(`Listening on port ${PORT}`);

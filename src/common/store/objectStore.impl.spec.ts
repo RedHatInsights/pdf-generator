@@ -1,4 +1,4 @@
-import config from './config';
+import config from '../config';
 
 describe('stage config', () => {
   it('should have tls and bucket configs', () => {
