@@ -16,7 +16,7 @@ import {
   GeneratePayload,
 } from '../../common/types';
 import { apiLogger, hpmLogger } from '../../common/logging';
-import { downloadPDF } from '../../common/objectStore';
+import { store } from '../../common/store';
 import { UpdateStatus } from '../utils';
 import { cluster } from '../cluster';
 import { generatePdf } from '../../browser/clusterTask';
@@ -285,7 +285,7 @@ router.get(
     const ID = req.params.ID;
     try {
       apiLogger.debug(ID);
-      const pdfReadable = await downloadPDF(ID);
+      const pdfReadable = await store.downloadPDF(ID);
       if (pdfReadable === undefined) {
         return res.status(404).send({
           error: {

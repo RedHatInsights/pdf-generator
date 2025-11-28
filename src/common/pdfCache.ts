@@ -1,7 +1,7 @@
 import { apiLogger } from './logging';
 import { ensureDirSync } from 'fs-extra';
 import PDFMerger from 'pdf-merger-js';
-import { downloadPDF, uploadPDF } from '../common/objectStore';
+import { store } from '../common/store';
 import os from 'os';
 import fs from 'fs';
 import { arrayBuffer as ArrayBuffer } from 'node:stream/consumers';
@@ -298,10 +298,13 @@ class PdfCache {
       // can sequentially grab all the s3 stored PDFs as a UINT8 array
       // and merge them in memory much faster than writing to disk
       for (const component of sortedSlices) {
-        const pdfReadable = await downloadPDF(component.componentId);
-        // TODO: It might be better to throw an error if readable is null,
-        // but the error passes down more accurately this way
-        const pdfBuffer = await ArrayBuffer(pdfReadable!);
+        const pdfReadable = await store.downloadPDF(component.componentId);
+        if (!pdfReadable) {
+          throw new Error(
+            `Failed to download PDF for ${component.componentId}`,
+          );
+        }
+        const pdfBuffer = await ArrayBuffer(pdfReadable);
         await merger.add(pdfBuffer);
       }
       const buffer = await merger.saveAsBuffer();
@@ -309,7 +312,7 @@ class PdfCache {
       const path = `${os.tmpdir()}/${collectionId}`;
       fs.writeFileSync(path, completed);
       apiLogger.debug(`${path} written to disk`);
-      await uploadPDF(collectionId, path);
+      await store.uploadPDF(collectionId, path);
       apiLogger.debug(`${collectionId} written to s3`);
     } catch (error) {
       apiLogger.debug(`Error merging files: ${error}`);
