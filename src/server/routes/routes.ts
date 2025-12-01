@@ -342,7 +342,7 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
   try {
     const pdfBuffer = await previewPdf(pdfUrl.toString());
     res.set('Content-Type', 'application/pdf');
-    res.status(200).send(pdfBuffer);
+    res.status(200).send(Buffer.from(pdfBuffer.buffer));
   } catch (error: unknown) {
     if (error instanceof Error) {
       // error.code is not part of the Error definition for TS inside of Node. Choices: delete the usage of code, or, force a new definition.
