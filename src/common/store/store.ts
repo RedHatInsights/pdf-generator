@@ -1,6 +1,10 @@
 import { PDFStorageService } from './types';
 import { ObjectStore } from './objectStore.impl';
 
+export enum StoreType {
+  S3 = 's3',
+}
+
 class StoreProxy implements PDFStorageService {
   private store: PDFStorageService | undefined;
 
@@ -8,8 +12,8 @@ class StoreProxy implements PDFStorageService {
     this.store = undefined;
   }
 
-  public intialize(type: 's3') {
-    if (type === 's3') {
+  public intialize(type: StoreType) {
+    if (type === StoreType.S3) {
       this.store = new ObjectStore();
     }
   }
