@@ -16,7 +16,7 @@ import {
   PreviewHandlerRequest,
   GeneratePayload,
 } from '../../common/types';
-import { apiLogger } from '../../common/logging';
+import { apiLogger, hpmLogger } from '../../common/logging';
 import { downloadPDF } from '../../common/objectStore';
 import { UpdateStatus } from '../utils';
 import { cluster } from '../cluster';
@@ -71,7 +71,7 @@ function addProxy(req: GenerateHandlerRequest) {
           proxyReq.removeHeader(config.AUTHORIZATION_CONTEXT_KEY);
         },
       },
-      logger: apiLogger,
+      logger: hpmLogger,
     });
     router.use(assetsProxy);
 
@@ -106,7 +106,7 @@ function addProxy(req: GenerateHandlerRequest) {
             proxyReq.removeHeader(config.AUTHORIZATION_CONTEXT_KEY);
           },
         },
-        logger: apiLogger,
+        logger: hpmLogger,
       });
       router.use(apiProxy);
     }

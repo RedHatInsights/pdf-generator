@@ -2,7 +2,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import instanceConfig from '../../common/config';
 import { ServiceNames } from '../../integration/endpoints';
 import { Endpoint } from 'app-common-js';
-import { apiLogger } from '../../common/logging';
+import { hpmLogger } from '../../common/logging';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const API_HOST = instanceConfig.scalprum.apiHost;
@@ -14,7 +14,7 @@ function createInternalProxies() {
     const internalRegEx = /^\/internal\/[^/]+/;
     const proxy = createProxyMiddleware({
       ...(PROXY_AGENT ? { agent: new HttpsProxyAgent(PROXY_AGENT) } : {}),
-      logger: apiLogger,
+      logger: hpmLogger,
       target: API_HOST,
       changeOrigin: true,
       pathFilter: (path) => path.startsWith('/internal'),
@@ -37,7 +37,7 @@ function createInternalProxies() {
   const internalProxies = Object.entries(meta).map(
     ([serviceName, endpoint]) => {
       return createProxyMiddleware({
-        logger: apiLogger,
+        logger: hpmLogger,
         target: `http://${endpoint.hostname}:${endpoint.port}`,
         changeOrigin: true,
         pathFilter: (path) => path.startsWith(`/internal/${serviceName}`),

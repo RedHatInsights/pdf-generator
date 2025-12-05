@@ -30,6 +30,21 @@ export const apiLogger = winston.createLogger({
 });
 
 /**
+ * hpmLogger is used for logging HTTP Proxy Middleware messages.
+ * It requires the splat format for interpolation.
+ */
+export const hpmLogger = winston.createLogger({
+  levels: logLevels,
+  level: config?.LOG_LEVEL,
+  format: winston.format.combine(
+    winston.format.splat(),
+    winston.format.colorize(),
+    winston.format.simple(),
+  ),
+  transports: [new winston.transports.Console()],
+});
+
+/**
  * requestLogger is exclusively responsible for logging requests from express.
  */
 export const requestLogger = expressWinston.logger({
