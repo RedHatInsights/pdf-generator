@@ -6,7 +6,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.943.0",
+    "@aws-sdk/client-s3": "^3.946.0",
     "@openshift/dynamic-plugin-sdk": "^5.0.1",
     "@quobix/vacuum": "^0.20.4",
     "@patternfly/patternfly": "^6.4.0",
