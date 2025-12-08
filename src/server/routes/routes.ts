@@ -8,7 +8,6 @@ import httpContext from 'express-http-context';
 import renderTemplate from '../render-template';
 import config from '../../common/config';
 import previewPdf from '../../browser/previewPDF';
-import { Readable } from 'stream';
 import {
   GenerateHandlerRequest,
   PdfRequestBody,
@@ -17,7 +16,7 @@ import {
   GeneratePayload,
 } from '../../common/types';
 import { apiLogger, hpmLogger } from '../../common/logging';
-import { downloadPDF } from '../../common/objectStore';
+import { store } from '../../common/store';
 import { UpdateStatus } from '../utils';
 import { cluster } from '../cluster';
 import { generatePdf } from '../../browser/clusterTask';
@@ -286,8 +285,8 @@ router.get(
     const ID = req.params.ID;
     try {
       apiLogger.debug(ID);
-      const response = await downloadPDF(ID);
-      if (!response || !response.Body) {
+      const pdfReadable = await store.downloadPDF(ID);
+      if (pdfReadable === undefined) {
         return res.status(404).send({
           error: {
             status: 404,
@@ -296,10 +295,9 @@ router.get(
           },
         });
       }
-      const pdfStream = response.Body as Readable;
       res.setHeader('Content-Disposition', `inline; filename="${ID}.pdf"`);
       res.setHeader('Content-Type', 'application/pdf');
-      pdfStream.pipe(res);
+      pdfReadable.pipe(res);
     } catch (error) {
       res.status(400).send({
         error: {
