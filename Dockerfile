@@ -9,11 +9,7 @@ RUN mkdir -p /pdf-gen/bin
 RUN microdnf module enable -y nodejs:22 && \
     microdnf install -y nodejs npm --nodocs
 
-ENV XDG_CONFIG_HOME="/tmp/.chromium"
-ENV XDG_CACHE_HOME="/tmp/.chromium"
-# needed for node-gyp https://github.com/nodejs/node-gyp?tab=readme-ov-file#installation
-RUN microdnf install -y python3 make gcc-c++
-
+ENV HOME=/tmp
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 # RUN npm install using package-lock.json
@@ -30,7 +26,7 @@ RUN microdnf install -y bzip2 fontconfig pango \
   libXext libXi libXtst cups-libs \
   libXScrnSaver libXrandr alsa-lib \
   atk gtk3 libdrm libgbm libxshmfence \
-  wget nss
+  wget nss firefox
 
 # Set node env variable
 ENV NODE_ENV=production
