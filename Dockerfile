@@ -6,10 +6,8 @@ WORKDIR /pdf-gen
 ADD . /pdf-gen
 RUN mkdir -p /pdf-gen/bin
 
-RUN microdnf install -y git make tar
-RUN curl -L https://git.io/n-install --output n-install
-RUN chmod +x n-install && yes y | ./n-install
-RUN $HOME/n/bin/n 22
+RUN microdnf module enable -y nodejs:22 && \
+    microdnf install -y nodejs npm --nodocs
 
 ENV XDG_CONFIG_HOME="/tmp/.chromium"
 ENV XDG_CACHE_HOME="/tmp/.chromium"
@@ -17,6 +15,7 @@ ENV XDG_CACHE_HOME="/tmp/.chromium"
 RUN microdnf install -y python3 make gcc-c++
 
 
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 # RUN npm install using package-lock.json
 RUN npm ci
 # Install the chromium locally if necessary.

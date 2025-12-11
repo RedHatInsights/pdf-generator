@@ -17,6 +17,10 @@ metadata:
   namespace: hcc-platex-services-tenant
 spec:
   params:
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[{"type": "npm", "path": "."}, {"type": "rpm", "path": "."}]'
   - name: git-url
     value: '{{source_url}}'
   - name: revision

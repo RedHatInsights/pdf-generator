@@ -1,0 +1,5 @@
+packages: [nodejs, npm, python3, make, gcc-c++, bzip2, fontconfig, pango, libXcomposite, libXcursor, libXdamage, libXext, libXi, libXtst, cups-libs, libXScrnSaver, libXrandr, alsa-lib, atk, gtk3, libdrm, libgbm, libxshmfence, wget, nss]
+contentOrigin:
+  repofiles: ["./ubi.repo"]
+moduleEnable: ["nodejs:22"]
+arches: [x86_64]
