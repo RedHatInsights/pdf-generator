@@ -1,6 +1,4 @@
 import type { Page } from 'puppeteer';
-import { glob } from 'glob';
-import config from '../common/config';
 
 export const SANITIZE_FILEPATH = /^(\.\.(\/|\\|$))+/;
 export const SANITIZE_REGEX =
@@ -22,21 +20,6 @@ export const margins = {
   right: '1cm',
   left: '1cm',
 };
-
-function getChromiumExecutablePath() {
-  const paths = glob.sync(
-    '/root/.cache/puppeteer/chrome/*/chrome-linux64/chrome',
-  );
-  if (paths.length > 0) {
-    return paths[0];
-  } else {
-    throw new Error('unable to locate chromium executable');
-  }
-}
-
-export const CHROMIUM_PATH = config?.IS_PRODUCTION
-  ? getChromiumExecutablePath()
-  : undefined;
 
 const A4Width = 210;
 const A4Height = 297;

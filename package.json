@@ -8,7 +8,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.948.0",
     "@openshift/dynamic-plugin-sdk": "^5.0.1",
-    "@quobix/vacuum": "^0.20.5",
     "@patternfly/patternfly": "^6.4.0",
     "pf-5-styles": "npm:@patternfly/patternfly@^5.4.2",
     "@scalprum/core": "^0.9.0",
