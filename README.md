@@ -52,6 +52,7 @@ The request body is an array of Scalprum configs
   }
 ]
 
+
 ```
 
 ### For local development only
