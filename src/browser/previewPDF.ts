@@ -1,11 +1,5 @@
 import puppeteer from 'puppeteer';
-import {
-  CHROMIUM_PATH,
-  pageHeight,
-  pageWidth,
-  setWindowProperty,
-} from './helpers';
-import config from '../common/config';
+import { pageHeight, pageWidth, setWindowProperty } from './helpers';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import { apiLogger } from '../common/logging';
 
@@ -19,13 +13,8 @@ const previewPdf = async (url: string) => {
   const createBuffer = async () => {
     const browser = await puppeteer.launch({
       headless: true,
-      ...(config?.IS_PRODUCTION
-        ? {
-            // we have a different dir structure than puppeteer expects. We have to point it to the correct chromium executable
-            executablePath: CHROMIUM_PATH,
-          }
-        : {}),
-      args: ['--no-sandbox', '--disable-gpu'],
+      browser: 'firefox',
+      executablePath: '/usr/bin/firefox',
     });
     const page = await browser.newPage();
 
