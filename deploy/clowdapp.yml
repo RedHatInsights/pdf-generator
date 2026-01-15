@@ -23,7 +23,7 @@ objects:
     - advisor-backend
     - vulnerability-engine
     - ros-backend
-    - ccx-data-pipeline
+    - ccx-smart-proxy
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}
