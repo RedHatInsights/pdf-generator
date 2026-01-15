@@ -6,7 +6,7 @@ export enum ServiceNames {
   'advisor-backend' = 'advisor-backend',
   'vulnerability-engine' = 'vulnerability-engine',
   'compliance' = 'compliance',
-  'ccx-data-pipeline' = 'ccx-data-pipeline',
+  'ccx-smart-proxy' = 'ccx-smart-proxy',
 }
 
 export type ServicesEndpoints = {
