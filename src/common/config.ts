@@ -152,6 +152,18 @@ function initializeConfig() {
     if (isClowderEnabled) {
       const clowderConfig = clowder.LoadedConfig();
       if (clowderConfig.endpoints) {
+        try {
+          clowderConfig.privateEndpoints?.forEach((endpoint) => {
+            endpoints[endpoint.app as ServiceNames] = {
+              app: endpoint.app,
+              hostname: endpoint.hostname,
+              name: endpoint.name,
+              port: endpoint.port,
+            };
+          });
+        } catch (error) {
+          console.log('Could not parse privateEndpoints', error);
+        }
         clowderConfig.endpoints.forEach((endpoint) => {
           endpoints[endpoint.app as ServiceNames] = {
             app: endpoint.app,
