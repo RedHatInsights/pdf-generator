@@ -24,8 +24,9 @@ export const margins = {
 };
 
 function getChromiumExecutablePath() {
+  const home = process.env.HOME || '/root';
   const paths = glob.sync(
-    '/root/.cache/puppeteer/chrome/*/chrome-linux64/chrome',
+    `${home}/.cache/puppeteer/chrome/*/chrome-linux64/chrome`,
   );
   if (paths.length > 0) {
     return paths[0];

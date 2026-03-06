@@ -1,43 +1,54 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1770267347
+# Stage 1: Build
+FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1772440444 AS builder
 
 USER 0
-
 WORKDIR /pdf-gen
-ADD . /pdf-gen
-RUN mkdir -p /pdf-gen/bin
+COPY . .
+RUN mkdir -p bin
 
-RUN microdnf install -y git make tar
-RUN curl -L https://git.io/n-install --output n-install
-RUN chmod +x n-install && yes y | ./n-install
-RUN $HOME/n/bin/n 22
+# Install build tools for native npm modules (node-gyp)
+RUN dnf install -y python3 make gcc-c++ git && dnf clean all
 
-ENV XDG_CONFIG_HOME="/tmp/.chromium"
-ENV XDG_CACHE_HOME="/tmp/.chromium"
-# needed for node-gyp https://github.com/nodejs/node-gyp?tab=readme-ov-file#installation
-RUN microdnf install -y python3 make gcc-c++
-
-
-# RUN npm install using package-lock.json
+# Install npm dependencies from lockfile
 RUN npm ci
-# Install the chromium locally if necessary.
+
+# Download Chrome for PDF generation
 RUN node node_modules/puppeteer/install.mjs
 
 # Check for circular dependencies
 RUN node circular.js
 
-# install puppeteer/chromium dependencies
+# Build the application
+ENV NODE_ENV=production
+RUN npm run build
+
+# Stage 2: Runtime
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.7-1771388883
+
+USER 0
+WORKDIR /pdf-gen
+
+# Install Chrome runtime dependencies
 RUN microdnf install -y bzip2 fontconfig pango \
   libXcomposite libXcursor libXdamage \
   libXext libXi libXtst cups-libs \
   libXScrnSaver libXrandr alsa-lib \
   atk gtk3 libdrm libgbm libxshmfence \
-  wget nss
+  nss && microdnf clean all
 
-# Set node env variable
+# Copy application artifacts from builder
+COPY --from=builder /pdf-gen/dist ./dist
+COPY --from=builder /pdf-gen/node_modules ./node_modules
+COPY --from=builder /pdf-gen/package.json ./package.json
+
+# Copy Chrome binary
+COPY --from=builder /opt/app-root/src/.cache/puppeteer /opt/app-root/src/.cache/puppeteer
+
+ENV HOME=/opt/app-root/src
+ENV XDG_CONFIG_HOME="/tmp/.chromium"
+ENV XDG_CACHE_HOME="/tmp/.chromium"
 ENV NODE_ENV=production
 ENV DEBUG=puppeteer-cluster:*
-
-RUN npm run build
 
 EXPOSE 8000
 CMD ["node", "./dist/server.js"]

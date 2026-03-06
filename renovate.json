@@ -3,19 +3,31 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
+      "description": "Disable major updates entirely",
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Update dependency versions in package.json",
       "matchManagers": ["npm"],
       "rangeStrategy": "bump"
     },
     {
+      "description": "Group npm minor and patch updates into a single PR",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "npm minor and patch dependencies",
       "enabled": true
     },
     {
-      "matchManagers": ["npm"],
-      "matchUpdateTypes": ["major"],
-      "enabled": false
+      "description": "Track UBI9 Node.js base image security updates as a group",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": [
+        "registry.access.redhat.com/ubi9/nodejs-22",
+        "registry.access.redhat.com/ubi9/nodejs-22-minimal"
+      ],
+      "pinDigests": true,
+      "groupName": "ubi9-nodejs base images"
     }
   ]
 }

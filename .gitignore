@@ -31,3 +31,6 @@ grype.yml
 
 # Local minio dir
 start
+
+# Project tmp folder
+tmp
