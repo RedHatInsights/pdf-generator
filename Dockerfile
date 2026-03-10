@@ -40,6 +40,7 @@ RUN microdnf install -y bzip2 fontconfig pango \
 COPY --from=builder /pdf-gen/dist ./dist
 COPY --from=builder /pdf-gen/node_modules ./node_modules
 COPY --from=builder /pdf-gen/package.json ./package.json
+COPY --from=builder /pdf-gen/public ./public
 
 # Copy Chrome binary
 COPY --from=builder /opt/app-root/src/.cache/puppeteer /opt/app-root/src/.cache/puppeteer
