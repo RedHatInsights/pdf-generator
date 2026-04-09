@@ -15,6 +15,7 @@ declare global {
   interface Window {
     __initialState__: GeneratePayload;
     __endpoints__: Partial<ServicesEndpoints>;
+    __requestData__: any;
     IS_PRODUCTION: boolean;
   }
 }
@@ -117,6 +118,8 @@ const MetadataWrapper = () => {
     }
   }
   useEffect(() => {
+    console.log('aaasdasd', window.__requestData__);
+
     getFetchMetadata();
   }, []);
 
@@ -138,14 +141,16 @@ const MetadataWrapper = () => {
   > = {
     asyncData: { data },
     additionalData: state.additionalData,
+    fetchData: window.__requestData__,
     scope: state.scope,
     module: state.module,
     importName: state.importName,
     ErrorComponent: <FetchErrorFallback />,
   };
+
   return (
     // ensure CSS scope is applied
-    <div className={state.scope}>
+    <div id="pdf-content" className={state.scope}>
       <ScalprumComponent {...props} />
     </div>
   );
