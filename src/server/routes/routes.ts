@@ -176,10 +176,12 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
     res.send(HTMLTemplate);
   } catch (error) {
     // render error to DOM to retrieve the error content from puppeteer
+    const errorString =
+      error instanceof Error ? error.message : JSON.stringify(error);
+    apiLogger.error(`Template rendering error: ${errorString}`);
     res.send(
-      `<div id="report-error" data-error="${JSON.stringify(
-        error,
-      )}">${error}</div>`,
+      `<div id="report-error" data-error="${JSON.stringify(error)}">${errorString}</div>` +
+        `<script>console.error('[crc-pdf-generator] Template rendering error:', ${JSON.stringify(errorString)});</script>`,
     );
   }
 });
@@ -251,33 +253,58 @@ router.post(
   },
 );
 
-router.get(`${config?.APIPrefix}/v2/status/:statusID`, (req: Request, res) => {
-  const ID = req.params.statusID;
-  pdfCache.verifyCollection(ID);
-  try {
-    const status = pdfCache.getCollection(ID);
-    apiLogger.debug(JSON.stringify(status));
-    if (!status) {
-      return res.status(404).send({
+router.get(
+  `${config?.APIPrefix}/v2/status/:statusID`,
+  async (req: Request, res) => {
+    const ID = req.params.statusID;
+    await pdfCache.verifyCollection(ID);
+    try {
+      const status = pdfCache.getCollection(ID);
+      apiLogger.debug(JSON.stringify(status));
+      if (!status) {
+        return res.status(404).send({
+          error: {
+            status: 404,
+            statusText:
+              'PDF status could not be determined; Please check the ID',
+            description: `No PDF status found for ${ID}`,
+          },
+        });
+      }
+
+      if (status.status === PdfStatus.Failed) {
+        const errorDetail =
+          status.error ||
+          status.components.find((c) => c.error)?.error ||
+          'Unknown error during PDF generation';
+        apiLogger.error(
+          `PDF generation failed for ${ID}: ${JSON.stringify(errorDetail)}`,
+        );
+        return res.status(500).send({
+          status,
+          error: {
+            status: 500,
+            statusText: 'PDF generation failed',
+            description:
+              typeof errorDetail === 'string'
+                ? errorDetail
+                : JSON.stringify(errorDetail),
+          },
+        });
+      }
+
+      return res.status(200).send({ status });
+    } catch (error) {
+      return res.status(400).send({
         error: {
-          status: 404,
-          statusText: 'PDF status could not be determined; Please check the ID',
-          description: `No PDF status found for ${ID}`,
+          status: 400,
+          statusText: 'PDF status could not be determined',
+          description: `Error: ${error}`,
         },
       });
     }
-
-    return res.status(200).send({ status });
-  } catch (error) {
-    return res.status(400).send({
-      error: {
-        status: 400,
-        statusText: 'PDF status could not be determined',
-        description: `Error: ${error}`,
-      },
-    });
-  }
-});
+  },
+);
 
 router.get(
   `${config?.APIPrefix}/v2/download/:ID`,
