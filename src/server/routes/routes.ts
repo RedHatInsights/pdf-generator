@@ -180,7 +180,7 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
       error instanceof Error ? error.message : JSON.stringify(error);
     apiLogger.error(`Template rendering error: ${errorString}`);
     res.send(
-      `<div id="report-error" data-error="${JSON.stringify(error)}">${errorString}</div>` +
+      `<div id="report-error" data-error="${JSON.stringify(errorString)}">${errorString}</div>` +
         `<script>console.error('[crc-pdf-generator] Template rendering error:', ${JSON.stringify(errorString)});</script>`,
     );
   }
