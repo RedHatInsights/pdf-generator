@@ -12,6 +12,7 @@ import { cluster } from '../server/cluster';
 import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { isTokenExpiringSoon, refreshAccessToken } from './tokenRefresh';
+import { getRequests } from '../server/utils';
 
 const BROWSER_TIMEOUT = 120_000;
 
@@ -33,12 +34,15 @@ async function runPageTask(
     fetchDataParams,
     landscape = false,
     uuid: componentId,
+    requests,
   }: PdfRequestBody,
   collectionId: string,
   order: number,
   pdfPath: string,
   authState: AuthState,
 ): Promise<void> {
+  const results = await getRequests(requests);
+
   await cluster.queue(async ({ page }: { page: Page }) => {
     if (PdfCache.getInstance().isCollectionFailed(collectionId)) {
       apiLogger.debug(
@@ -64,6 +68,10 @@ async function runPageTask(
         collectionId,
       });
       await page.setViewport({ width: pageWidth, height: pageHeight });
+      await page.evaluateOnNewDocument((results) => {
+        window.__requestData__ = results;
+      }, results);
+
       page.on('console', (msg) =>
         apiLogger.info(`[Headless log] ${msg.text()}`),
       );
