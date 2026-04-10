@@ -96,10 +96,15 @@ export const generatePdf = async (
     const pageStatus = pageResponse?.status();
 
     // get the error from DOM if it exists
+    // check both the app-level error element and the template rendering error
     const error = await page.evaluate(() => {
-      const elem = document.getElementById('crc-pdf-generator-err');
-      if (elem) {
-        return elem.innerText;
+      const appError = document.getElementById('crc-pdf-generator-err');
+      if (appError) {
+        return appError.innerText;
+      }
+      const templateError = document.getElementById('report-error');
+      if (templateError) {
+        return templateError.innerText;
       }
     });
 
