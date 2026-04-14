@@ -11,6 +11,7 @@ import { PdfGenerationError } from '../server/errors';
 import { cluster } from '../server/cluster';
 import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
+import { getRequests } from '../server/utils';
 
 // Match the timeout on the gateway
 const BROWSER_TIMEOUT = 60_000;
@@ -29,12 +30,15 @@ export const generatePdf = async (
     uuid: componentId,
     authHeader,
     authCookie,
+    requests,
   }: PdfRequestBody,
   collectionId: string,
   order: number,
 ): Promise<void> => {
   const pdfPath = getNewPdfName(componentId);
+
   await cluster.queue(async ({ page }: { page: Page }) => {
+    const results = await getRequests(requests);
     const updateMessage = {
       status: PdfStatus.Generating,
       filepath: '',
@@ -82,7 +86,11 @@ export const generatePdf = async (
     }
 
     await page.setExtraHTTPHeaders(extraHeaders);
+    await page.evaluateOnNewDocument((results) => {
+      window.__requestData__ = results;
+    }, results);
 
+    console.log('GOIN to', url);
     const pageResponse = await page.goto(url, {
       waitUntil: 'networkidle2',
       timeout: BROWSER_TIMEOUT,

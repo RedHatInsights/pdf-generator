@@ -1,4 +1,6 @@
 import config from './config';
+import { AxiosRequestConfig } from 'axios';
+
 import { Request } from 'express';
 
 export type PreviewReqBody = {
@@ -16,6 +18,7 @@ export type GeneratePayload = {
   landscape?: boolean;
   identity?: string;
   authCookie?: string;
+  requests: Record<string, Record<string, AxiosRequestConfig>>;
 };
 
 export type PreviewHandlerRequest = Request<
