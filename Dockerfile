@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1776196021@sha256:1fe6a3926ed6249559bb079d523a81e4dad1628205edfd9dea9ab8247f08caec AS builder
+FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1776371088@sha256:6f2ab53021ed3dafd970c52cc916eb61f56b760377f2bd34d78433b74b5256d5 AS builder
 
 USER 0
 WORKDIR /pdf-gen
