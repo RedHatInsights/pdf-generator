@@ -14,7 +14,7 @@ export const UpdateStatus = async (updateMessage: PDFComponent) => {
     .catch((error: unknown) => {
       apiLogger.error(`Kafka message not sent: ${error}`);
     });
-  pdfCache.verifyCollection(updateMessage.collectionId);
+  await pdfCache.verifyCollection(updateMessage.collectionId);
 };
 
 export const isValidPageResponse = (code: number) => {

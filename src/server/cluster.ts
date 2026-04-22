@@ -35,6 +35,12 @@ export const GetPupCluster = async () => {
       ],
     },
   });
+
+  // Add error handlers to prevent unhandled rejections from cluster tasks
+  cluster.on('taskerror', (err: Error, data: unknown) => {
+    apiLogger.error('Puppeteer cluster task error:', err, 'data:', data);
+  });
+
   return cluster;
 };
 

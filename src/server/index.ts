@@ -41,6 +41,26 @@ const server = http.createServer({}, app).listen(PORT, () => {
 server.keepAliveTimeout = 60 * 1000 + 1000; // 61 s
 server.keepAliveTimeout = 60 * 1000 + 2000; // 62 s
 
+// Global error handlers to prevent crashes from unhandled rejections
+process.on(
+  'unhandledRejection',
+  (reason: unknown, promise: Promise<unknown>) => {
+    apiLogger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit in production - log and continue
+    // This prevents process crashes from async errors in PDF generation
+  },
+);
+
+process.on('uncaughtException', (error: Error) => {
+  apiLogger.error('Uncaught Exception:', error);
+  // Log the error but don't exit - let container orchestration handle restarts
+});
+
+// HTTP server error handler
+server.on('error', (error: Error) => {
+  apiLogger.error('HTTP Server error:', error);
+});
+
 const metricsApp = express();
 
 const metricsMiddleware = promBundle({
