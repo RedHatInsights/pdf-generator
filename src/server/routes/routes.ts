@@ -234,7 +234,7 @@ router.post(
         collectionId: collectionId,
         componentId: '',
       };
-      UpdateStatus(updateMessage);
+      await UpdateStatus(updateMessage);
       res.status(500).send({
         error: {
           status: 500,
