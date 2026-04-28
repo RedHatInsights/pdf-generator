@@ -154,6 +154,26 @@ describe('Pdf Cache updates', () => {
     expect(collection.components[0].status).toBe(PdfStatus.Generated);
   });
 
+  it('should return true for isCollectionFailed when collection status is Failed', () => {
+    expect(pdfCache.isCollectionFailed(baseId)).toBe(true);
+  });
+
+  it('should return false for isCollectionFailed when collection is still generating', () => {
+    const genComp: PDFComponent = {
+      status: PdfStatus.Generating,
+      filepath: '',
+      collectionId: 'gen-collection-id',
+      componentId: 'gen-component-id',
+      numPages: 0,
+    };
+    pdfCache.addToCollection(genComp.collectionId, genComp);
+    expect(pdfCache.isCollectionFailed(genComp.collectionId)).toBe(false);
+  });
+
+  it('should return false for isCollectionFailed when collection does not exist', () => {
+    expect(pdfCache.isCollectionFailed('nonexistent-collection')).toBe(false)
+  });
+
   it('should set the length properly when a collection has not been added directly', () => {
     const notAdded: PDFComponent = {
       status: PdfStatus.Generated,

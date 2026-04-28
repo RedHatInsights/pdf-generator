@@ -36,6 +36,15 @@ export const generatePdf = async (
   const pdfPath = getNewPdfName(componentId);
   try {
     await cluster.queue(async ({ page }: { page: Page }) => {
+      // If another component in this collection already failed,
+      // skip all expensive work (page navigation, API requests, PDF generation)
+      if (PdfCache.getInstance().isCollectionFailed(collectionId)) {
+        apiLogger.debug(
+          `Skipping component ${componentId}: collection ${collectionId} already failed`,
+        );
+        return;
+      }
+
       const updateMessage = {
         status: PdfStatus.Generating,
         filepath: '',
@@ -160,6 +169,15 @@ export const generatePdf = async (
           componentId,
           `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
         );
+      }
+
+      // Re-check after page load in case another component failed while
+      // this one was waiting for network requests to complete
+      if (PdfCache.getInstance().isCollectionFailed(collectionId)) {
+        apiLogger.debug(
+          `Aborting component ${componentId}: collection ${collectionId} failed during page load`,
+        );
+        return;
       }
 
       const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
