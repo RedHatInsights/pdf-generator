@@ -148,6 +148,14 @@ class PdfCache {
     delete this.data[id];
   }
 
+  public isCollectionFailed(collectionId: string): boolean {
+    const collection = this.data[collectionId];
+    if (!collection) {
+      return false;
+    }
+    return collection.status === PdfStatus.Failed;
+  }
+
   public getComponents(collectionId: string) {
     if (this.data[collectionId]) {
       return this.data[collectionId].components;
