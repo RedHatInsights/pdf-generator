@@ -88,6 +88,72 @@ describe('Pdf Cache updates', () => {
     expect(noLen.status).toBe(PdfStatus.Generating);
   });
 
+  it('should preserve order field when adding components', () => {
+    const collId = 'order-test-fc64-4e51-910a-b1ff3918b440';
+    const comp1: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'page1.pdf',
+      collectionId: collId,
+      componentId: 'comp-1',
+      numPages: 1,
+      order: 3,
+    };
+    const comp2: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'page2.pdf',
+      collectionId: collId,
+      componentId: 'comp-2',
+      numPages: 1,
+      order: 1,
+    };
+    const comp3: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'page3.pdf',
+      collectionId: collId,
+      componentId: 'comp-3',
+      numPages: 1,
+      order: 2,
+    };
+    pdfCache.addToCollection(collId, comp1);
+    pdfCache.addToCollection(collId, comp2);
+    pdfCache.addToCollection(collId, comp3);
+
+    const collection = pdfCache.getCollection(collId);
+    expect(collection.components.length).toBe(3);
+    expect(collection.components[0].order).toBe(3);
+    expect(collection.components[1].order).toBe(1);
+    expect(collection.components[2].order).toBe(2);
+  });
+
+  it('should preserve order when replacing a component by componentId', () => {
+    const collId = 'replace-order-fc64-4e51-910a-b1ff3918b440';
+    const original: PDFComponent = {
+      status: PdfStatus.Generating,
+      filepath: '',
+      collectionId: collId,
+      componentId: 'comp-replace',
+      numPages: 0,
+      order: 5,
+    };
+    pdfCache.addToCollection(collId, original);
+
+    // Simulate Kafka update that includes order (the fix)
+    const updated: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'done.pdf',
+      collectionId: collId,
+      componentId: 'comp-replace',
+      numPages: 2,
+      order: 5,
+    };
+    pdfCache.addToCollection(collId, updated);
+
+    const collection = pdfCache.getCollection(collId);
+    expect(collection.components.length).toBe(1);
+    expect(collection.components[0].order).toBe(5);
+    expect(collection.components[0].status).toBe(PdfStatus.Generated);
+  });
+
   it('should set the length properly when a collection has not been added directly', () => {
     const notAdded: PDFComponent = {
       status: PdfStatus.Generated,
