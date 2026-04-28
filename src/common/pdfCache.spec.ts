@@ -171,7 +171,7 @@ describe('Pdf Cache updates', () => {
   });
 
   it('should return false for isCollectionFailed when collection does not exist', () => {
-    expect(pdfCache.isCollectionFailed('nonexistent-collection')).toBe(false)
+    expect(pdfCache.isCollectionFailed('nonexistent-collection')).toBe(false);
   });
 
   it('should set the length properly when a collection has not been added directly', () => {
