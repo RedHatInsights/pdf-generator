@@ -136,6 +136,7 @@ export async function consumeMessages(topic: string) {
           componentId: updateMessage.componentId,
           numPages: updateMessage?.numPages || 0,
           error: updateMessage?.error || `''`,
+          order: updateMessage?.order,
         });
       } catch (error) {
         apiLogger.debug(`Message sync error: ${JSON.stringify(error)}`);
