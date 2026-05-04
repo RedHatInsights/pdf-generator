@@ -4,18 +4,20 @@ import config from '../common/config';
 const BROWSER_TIMEOUT = 60_000;
 import { CHROMIUM_PATH } from '../browser/helpers';
 import { apiLogger } from '../common/logging';
+const CONCURRENCY_DEFAULT = 2;
 
-export const GetPupCluster = async () => {
-  const CONCURRENCY_DEFAULT = 2;
+const launchCluster = async () => {
   const concurrency =
     Number(process.env.MAX_CONCURRENCY) || CONCURRENCY_DEFAULT;
   apiLogger.debug(`Starting cluster with ${concurrency} workers`);
+
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_CONTEXT,
     maxConcurrency: concurrency,
     // If a queued task fails, how many times will it retry before returning an error
     retryLimit: 2,
     puppeteerOptions: {
+      headless: false,
       timeout: BROWSER_TIMEOUT,
       ...(config?.IS_PRODUCTION
         ? {
@@ -44,4 +46,12 @@ export const GetPupCluster = async () => {
   return cluster;
 };
 
-export const cluster = await GetPupCluster();
+let cachedCluster = null;
+
+export default async () => {
+  if (!cachedCluster) {
+    cachedCluster = await launchCluster();
+  }
+
+  return cachedCluster;
+};
