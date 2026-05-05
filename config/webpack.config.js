@@ -92,6 +92,13 @@ const moduleFederationPlugin = new container.ModuleFederationPlugin({
       requiredVersion: '*',
       singleton: true,
     },
+    // Ensure react/jsx-runtime is in the webpack shared scope.
+    // Federated modules using the automatic JSX transform require it.
+    'react/jsx-runtime': {
+      requiredVersion: '*',
+      singleton: true,
+      eager: true,
+    },
     'react-router-dom': {
       requiredVersion: '*',
       singleton: true,
