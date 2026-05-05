@@ -97,7 +97,6 @@ const moduleFederationPlugin = new container.ModuleFederationPlugin({
     'react/jsx-runtime': {
       requiredVersion: '*',
       singleton: true,
-      eager: true,
     },
     'react-router-dom': {
       requiredVersion: '*',

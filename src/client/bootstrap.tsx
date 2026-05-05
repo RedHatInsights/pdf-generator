@@ -11,6 +11,8 @@ import { createRoot } from 'react-dom/client';
 import { GeneratePayload } from '../common/types';
 import { ServiceNames, ServicesEndpoints } from '../integration/endpoints';
 
+import 'react/jsx-runtime';
+
 declare global {
   interface Window {
     __initialState__: GeneratePayload;
