@@ -9,14 +9,18 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GeneratePayload } from '../common/types';
-import { ServiceNames, ServicesEndpoints } from '../integration/endpoints';
+import {
+  ServiceNames,
+  IntegrationEndpointsMap,
+} from '../integration/endpoints';
+import { resolveInternalRouteKey } from '../common/integrationEndpoints';
 
 import 'react/jsx-runtime';
 
 declare global {
   interface Window {
     __initialState__: GeneratePayload;
-    __endpoints__: Partial<ServicesEndpoints>;
+    __endpoints__: IntegrationEndpointsMap;
     IS_PRODUCTION: boolean;
   }
 }
@@ -36,30 +40,46 @@ const config: AppsConfig = {
   },
 };
 
+type CreateAxiosRequestConfig = AxiosRequestConfig & {
+  clowderDeploymentName?: string;
+};
+
 type CreateAxiosRequest = (
   service: ServiceNames,
-  config: AxiosRequestConfig,
+  config: CreateAxiosRequestConfig,
 ) => Promise<unknown>;
 
-function createAxiosRequest(service: ServiceNames, config: AxiosRequestConfig) {
-  if (window.IS_PRODUCTION && !window.__endpoints__[service]) {
-    const message = `createAxiosRequest: Service ${service} not found! Available services: ${Object.keys(
-      window.__endpoints__,
-    ).join(', ')}.\n You might need to add service integration in the config.`;
+const createAxiosRequest: CreateAxiosRequest = (service, config) => {
+  const { clowderDeploymentName, ...axiosConfig } = config;
+  const routeKey = resolveInternalRouteKey(
+    service,
+    window.__endpoints__,
+    clowderDeploymentName,
+  );
+
+  if (window.IS_PRODUCTION && !routeKey) {
+    const message = `createAxiosRequest: internal route for "${service}" not found${
+      clowderDeploymentName
+        ? ` (clowderDeploymentName: ${clowderDeploymentName})`
+        : ''
+    }. Known keys: ${Object.keys(window.__endpoints__).join(
+      ', ',
+    )}. For apps with multiple Clowder deployments pass clowderDeploymentName (e.g. manager-service).`;
     throw new Error(message);
   }
 
-  if (!config.url) {
+  if (!axiosConfig.url) {
     throw new Error('createAxiosRequest: URL is required!');
   }
-  config.url = `/internal/${service}${config.url}`;
-  return axios(config)
+  const resolvedKey = routeKey ?? service;
+  axiosConfig.url = `/internal/${resolvedKey}${axiosConfig.url}`;
+  return axios(axiosConfig)
     .then((response: AxiosResponse) => response.data)
     .catch((error) => {
       console.error(error);
       throw error;
     });
-}
+};
 
 type FetchData = (
   createAsyncRequest: CreateAxiosRequest,
@@ -106,6 +126,26 @@ const MetadataWrapper = () => {
         state.scope,
         state.module,
         'fetchData',
+      );
+      const fetchParams = state.fetchDataParams;
+      const fetchParamsRecord =
+        fetchParams &&
+        typeof fetchParams === 'object' &&
+        !Array.isArray(fetchParams)
+          ? fetchParams
+          : undefined;
+      console.log(
+        `[crc-pdf-generator] after getModule(fetchData): ${JSON.stringify({
+          module: state.module,
+          importName: state.importName,
+          hasFetchDataExport: Boolean(fn),
+          fetchDataParamKeys: fetchParamsRecord
+            ? Object.keys(fetchParamsRecord)
+            : [],
+          fetchDataParamsClowderDeploymentName:
+            fetchParamsRecord?.clowderDeploymentName ??
+            '(not on fetchDataParams)',
+        })}`,
       );
       if (!fn) {
         setAsyncState({ loading: false, error: null, data: null });
