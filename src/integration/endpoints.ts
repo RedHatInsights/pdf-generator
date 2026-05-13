@@ -12,3 +12,9 @@ export enum ServiceNames {
 export type ServicesEndpoints = {
   [key in ServiceNames]: Endpoint;
 };
+
+export const PREFERRED_CLOWDER_DEPLOYMENT_NAME_BY_SERVICE: Partial<
+  Record<ServiceNames, string>
+> = {
+  [ServiceNames['vulnerability-engine']]: 'manager-service',
+};

@@ -5,10 +5,15 @@ import {
   KafkaBroker,
   KafkaTopic,
   Config,
+  Endpoint,
 } from 'app-common-js';
 import { UPDATE_TOPIC } from '../browser/constants';
 import * as fs from 'fs';
-import { ServiceNames, ServicesEndpoints } from '../integration/endpoints';
+import {
+  PREFERRED_CLOWDER_DEPLOYMENT_NAME_BY_SERVICE,
+  ServiceNames,
+  ServicesEndpoints,
+} from '../integration/endpoints';
 
 const defaultConfig: {
   webPort: number;
@@ -138,6 +143,49 @@ const defaultConfig: {
   ],
  */
 
+function pickClowderEndpointForApp(
+  rows: Endpoint[],
+  app: ServiceNames,
+): Endpoint {
+  if (rows.length <= 1) {
+    return rows[0];
+  }
+  const preferredName = PREFERRED_CLOWDER_DEPLOYMENT_NAME_BY_SERVICE[app];
+  if (preferredName) {
+    const match = rows.find((e) => e.name === preferredName);
+    if (match) {
+      return match;
+    }
+  }
+  return rows[rows.length - 1];
+}
+
+function mergeClowderDependencyEndpoints(
+  privateEndpoints: Endpoint[] | undefined,
+  publicEndpoints: Endpoint[] | undefined,
+  out: Partial<ServicesEndpoints>,
+) {
+  const byApp = new Map<string, Endpoint[]>();
+  const push = (endpoint: Endpoint) => {
+    const list = byApp.get(endpoint.app) ?? [];
+    list.push(endpoint);
+    byApp.set(endpoint.app, list);
+  };
+  privateEndpoints?.forEach(push);
+  publicEndpoints?.forEach(push);
+
+  byApp.forEach((rows, appKey) => {
+    const app = appKey as ServiceNames;
+    const resolvedEndpoint = pickClowderEndpointForApp(rows, app);
+    out[app] = {
+      app: resolvedEndpoint.app,
+      hostname: resolvedEndpoint.hostname,
+      name: resolvedEndpoint.name,
+      port: resolvedEndpoint.port,
+    };
+  });
+}
+
 function initializeConfig() {
   let isClowderEnabled = false;
   const endpoints: Partial<ServicesEndpoints> = {};
@@ -151,27 +199,14 @@ function initializeConfig() {
     isClowderEnabled = IsClowderEnabled();
     if (isClowderEnabled) {
       const clowderConfig = clowder.LoadedConfig();
-      if (clowderConfig.endpoints) {
-        try {
-          clowderConfig.privateEndpoints?.forEach((endpoint) => {
-            endpoints[endpoint.app as ServiceNames] = {
-              app: endpoint.app,
-              hostname: endpoint.hostname,
-              name: endpoint.name,
-              port: endpoint.port,
-            };
-          });
-        } catch (error) {
-          console.log('Could not parse privateEndpoints', error);
-        }
-        clowderConfig.endpoints.forEach((endpoint) => {
-          endpoints[endpoint.app as ServiceNames] = {
-            app: endpoint.app,
-            hostname: endpoint.hostname,
-            name: endpoint.name,
-            port: endpoint.port,
-          };
-        });
+      try {
+        mergeClowderDependencyEndpoints(
+          clowderConfig.privateEndpoints,
+          clowderConfig.endpoints,
+          endpoints,
+        );
+      } catch (error) {
+        console.log('Could not merge Clowder dependency endpoints', error);
       }
       if (clowderConfig.kafka.brokers[0].cacert != undefined) {
         try {
