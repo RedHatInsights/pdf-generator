@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1777958137@sha256:1a36e1ba3c48f48bbfbdc92bf6e2eb3d15f75be8e3e835d8730320ebc3c3dab8 AS builder
+FROM registry.access.redhat.com/ubi9/nodejs-22:9.7-1778648048@sha256:e06a0042a0a1502696a6f139f50e7fc1048a38d9c8358747c36d8905bf3f9258 AS builder
 
 USER 0
 WORKDIR /pdf-gen
@@ -23,7 +23,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: Runtime
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.7-1777883927@sha256:36278561543e51f9a798a7f68aa1e978205052b19837173b3ee81861a5d898df
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.7-1778676353@sha256:97a1b1d1c805cd6f99505edf7d137a752639cab02327f176533ba96de65b414c
 
 USER 0
 WORKDIR /pdf-gen
