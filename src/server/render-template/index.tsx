@@ -39,7 +39,7 @@ function renderTemplate(payload: GeneratePayload) {
     path.resolve(root, 'dist/public/index.html'),
     { encoding: 'utf-8' },
   );
-
+  console.log('PAY', payload);
   const template = baseTemplate.replace(
     '<script id="initial-state"></script>',
     `<script id="initial-state">window.__initialState__ = ${JSON.stringify(

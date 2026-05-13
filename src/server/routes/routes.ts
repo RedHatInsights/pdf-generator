@@ -18,7 +18,7 @@ import {
 import { apiLogger, hpmLogger } from '../../common/logging';
 import { store } from '../../common/store';
 import { UpdateStatus } from '../utils';
-import { cluster } from '../cluster';
+import cluster from '../cluster';
 import { generatePdf } from '../../browser/clusterTask';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import createInternalProxies from './createInternalProxies';
@@ -245,7 +245,7 @@ router.post(
     } finally {
       // To handle the edge case where a cluster terminates while the queue isn't empty,
       // we ensure that the queue is empty and all workers are idle.
-      await cluster.idle();
+      (await cluster()).idle();
       // Do not close the cluster!
       apiLogger.debug('task finished');
       apiLogger.debug(JSON.stringify(pdfCache));

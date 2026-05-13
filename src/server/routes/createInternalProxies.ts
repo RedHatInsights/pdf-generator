@@ -11,6 +11,7 @@ const PROXY_AGENT = instanceConfig.scalprum.proxyAgent;
 function createInternalProxies() {
   // skip internal routing if API_HOST is set
   if (API_HOST && API_HOST !== 'blank') {
+    console.log('YOLOO');
     const internalRegEx = /^\/internal\/[^/]+/;
     const proxy = createProxyMiddleware({
       ...(PROXY_AGENT ? { agent: new HttpsProxyAgent(PROXY_AGENT) } : {}),
@@ -19,6 +20,7 @@ function createInternalProxies() {
       changeOrigin: true,
       pathFilter: (path) => path.startsWith('/internal'),
       pathRewrite: (path) => path.replace(internalRegEx, ''),
+      secure: false,
     });
     return [proxy];
   }

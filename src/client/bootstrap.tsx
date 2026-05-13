@@ -130,6 +130,7 @@ const MetadataWrapper = () => {
   if (loading) {
     return <div>Loading...</div>;
   }
+  alert(JSON.stringify(data, null, 2));
 
   const props: ScalprumComponentProps<
     Record<string, any>,
@@ -143,17 +144,20 @@ const MetadataWrapper = () => {
     scope: state.scope,
     module: state.module,
     importName: state.importName,
-    ErrorComponent: <FetchErrorFallback />,
   };
+
+  console.log('ASASA', props);
   return (
     // ensure CSS scope is applied
     <div className={state.scope}>
+      sadfsdfsdf
       <ScalprumComponent {...props} />
     </div>
   );
 };
 
 const App = () => {
+  console.log('config', config);
   return (
     <ScalprumProvider
       config={config}
@@ -176,6 +180,7 @@ const App = () => {
                 );
               }
             }
+            console.log('MANN', manifest, newManifest);
             return newManifest;
           },
         },
