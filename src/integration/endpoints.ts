@@ -12,3 +12,5 @@ export enum ServiceNames {
 export type ServicesEndpoints = {
   [key in ServiceNames]: Endpoint;
 };
+
+export type IntegrationEndpointsMap = Partial<Record<string, Endpoint>>;
