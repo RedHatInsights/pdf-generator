@@ -8,13 +8,14 @@ import {
 } from 'app-common-js';
 import { UPDATE_TOPIC } from '../browser/constants';
 import * as fs from 'fs';
-import { ServiceNames, ServicesEndpoints } from '../integration/endpoints';
+import { IntegrationEndpointsMap } from '../integration/endpoints';
+import { mergeClowderEndpoints } from './integrationEndpoints';
 
 const defaultConfig: {
   webPort: number;
   metricsPort: number;
   metricsPath: string;
-  endpoints: Partial<ServicesEndpoints>;
+  endpoints: IntegrationEndpointsMap;
   tlsCAPath: string;
   objectStore: {
     hostname: string;
@@ -140,7 +141,7 @@ const defaultConfig: {
 
 function initializeConfig() {
   let isClowderEnabled = false;
-  const endpoints: Partial<ServicesEndpoints> = {};
+  const endpoints: IntegrationEndpointsMap = {};
 
   try {
     let config: typeof defaultConfig = {
@@ -153,25 +154,16 @@ function initializeConfig() {
       const clowderConfig = clowder.LoadedConfig();
       if (clowderConfig.endpoints) {
         try {
-          clowderConfig.privateEndpoints?.forEach((endpoint) => {
-            endpoints[endpoint.app as ServiceNames] = {
-              app: endpoint.app,
-              hostname: endpoint.hostname,
-              name: endpoint.name,
-              port: endpoint.port,
-            };
-          });
+          Object.assign(
+            endpoints,
+            mergeClowderEndpoints(
+              clowderConfig.privateEndpoints,
+              clowderConfig.endpoints,
+            ),
+          );
         } catch (error) {
-          console.log('Could not parse privateEndpoints', error);
+          console.log('Could not merge Clowder endpoints', error);
         }
-        clowderConfig.endpoints.forEach((endpoint) => {
-          endpoints[endpoint.app as ServiceNames] = {
-            app: endpoint.app,
-            hostname: endpoint.hostname,
-            name: endpoint.name,
-            port: endpoint.port,
-          };
-        });
       }
       if (clowderConfig.kafka.brokers[0].cacert != undefined) {
         try {
