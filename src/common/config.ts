@@ -39,6 +39,10 @@ const defaultConfig: {
   JWT_COOKIE_NAME: string;
   AUTHORIZATION_HEADER_KEY: string;
   AUTHORIZATION_CONTEXT_KEY: string;
+  REFRESH_TOKEN_HEADER_KEY: string;
+  REFRESH_TOKEN_CONTEXT_KEY: string;
+  SSO_URL: string;
+  SSO_CLIENT_ID: string;
   ACCOUNT_ID: string;
   LOG_LEVEL: string;
   scalprum: {
@@ -106,6 +110,10 @@ const defaultConfig: {
   IDENTITY_HEADER_KEY: 'x-rh-identity',
   AUTHORIZATION_HEADER_KEY: 'Authorization',
   AUTHORIZATION_CONTEXT_KEY: 'x-pdf-auth',
+  REFRESH_TOKEN_HEADER_KEY: 'x-rh-refresh-token',
+  REFRESH_TOKEN_CONTEXT_KEY: 'x-pdf-refresh-token',
+  SSO_URL: process.env.SSO_URL || '',
+  SSO_CLIENT_ID: process.env.SSO_CLIENT_ID || 'cloud-services',
   JWT_COOKIE_NAME: 'cs_jwt',
   ACCOUNT_ID: '',
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
