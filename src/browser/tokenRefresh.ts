@@ -40,9 +40,7 @@ export async function refreshAccessToken(
 
     if (!response.ok) {
       const text = await response.text();
-      apiLogger.error(
-        `[token-refresh] Failed: ${response.status} ${text}`,
-      );
+      apiLogger.error(`[token-refresh] Failed: ${response.status} ${text}`);
       return null;
     }
 
