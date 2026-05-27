@@ -164,7 +164,10 @@ async function runPageTask(
             assetCache.set(assetCacheKey(respUrl), {
               body,
               contentType:
-                resp.headers()['content-type'] || 'application/javascript',
+                resp.headers()['content-type'] ||
+                (respUrl.match(/\.css(\?|$)/)
+                  ? 'text/css'
+                  : 'application/javascript'),
             });
           } catch {
             // response body may not be available
