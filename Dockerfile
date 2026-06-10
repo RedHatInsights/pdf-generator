@@ -9,11 +9,11 @@ RUN mkdir -p bin
 # Install build tools for native npm modules (node-gyp)
 RUN dnf install -y python3 make gcc-c++ git && dnf clean all
 
-# Install npm dependencies from lockfile
-RUN npm ci
+# Install npm dependencies from lockfile (skip default Chrome download)
+RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
 
-# Download Chrome for PDF generation
-RUN node node_modules/puppeteer/install.mjs
+# Download Chrome 149.0.7827.53 for PDF generation (patches CVEs in bundled 149.0.7827.22)
+RUN npx @puppeteer/browsers install chrome@149.0.7827.53 --path /opt/app-root/src/.cache/puppeteer
 
 # Check for circular dependencies
 RUN node circular.js
