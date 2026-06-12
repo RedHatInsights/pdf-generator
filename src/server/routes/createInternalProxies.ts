@@ -16,9 +16,24 @@ function createInternalProxies() {
       ...(PROXY_AGENT ? { agent: new HttpsProxyAgent(PROXY_AGENT) } : {}),
       logger: hpmLogger,
       target: API_HOST,
+      secure: false,
       changeOrigin: true,
       pathFilter: (path) => path.startsWith('/internal/'),
       pathRewrite: (path) => path.replace(internalRegEx, ''),
+      on: {
+        proxyReq: (proxyReq) => {
+          const authHeader = proxyReq.getHeader(
+            instanceConfig.AUTHORIZATION_CONTEXT_KEY,
+          );
+          if (authHeader) {
+            proxyReq.setHeader(
+              instanceConfig.AUTHORIZATION_HEADER_KEY,
+              authHeader,
+            );
+          }
+          proxyReq.removeHeader(instanceConfig.AUTHORIZATION_CONTEXT_KEY);
+        },
+      },
     });
     return [proxy];
   }

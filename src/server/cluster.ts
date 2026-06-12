@@ -1,7 +1,6 @@
 import { Cluster } from 'puppeteer-cluster';
 import config from '../common/config';
-// Match the timeout on the gateway
-const BROWSER_TIMEOUT = 60_000;
+const BROWSER_TIMEOUT = 120_000;
 import { CHROMIUM_PATH } from '../browser/helpers';
 import { apiLogger } from '../common/logging';
 
@@ -15,6 +14,7 @@ export const GetPupCluster = async () => {
     maxConcurrency: concurrency,
     // If a queued task fails, how many times will it retry before returning an error
     retryLimit: 2,
+    timeout: BROWSER_TIMEOUT,
     puppeteerOptions: {
       timeout: BROWSER_TIMEOUT,
       ...(config?.IS_PRODUCTION

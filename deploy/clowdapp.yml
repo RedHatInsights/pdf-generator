@@ -62,6 +62,10 @@ objects:
           value: ${ASSETS_HOST}
         - name: PROXY_AGENT
           value: ${PROXY_AGENT}
+        - name: SSO_URL
+          value: ${SSO_URL}
+        - name: SSO_CLIENT_ID
+          value: ${SSO_CLIENT_ID}
         resources:
           limits:
             cpu: ${CPU_LIMIT_SERVICE}
@@ -118,3 +122,9 @@ parameters:
 - description: Amount of worker threads that puppeteer-cluster will use
   name: MAX_CONCURRENCY
   value: "2"
+- description: SSO/Keycloak base URL for token refresh
+  name: SSO_URL
+  value: ""
+- description: SSO client ID for token refresh
+  name: SSO_CLIENT_ID
+  value: "cloud-services"

@@ -9,6 +9,7 @@ import renderTemplate from '../render-template';
 import config from '../../common/config';
 import previewPdf from '../../browser/previewPDF';
 import {
+  AuthState,
   GenerateHandlerRequest,
   PdfRequestBody,
   PuppeteerBrowserRequest,
@@ -150,6 +151,7 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
     authHeader:
       httpContext.get(config.AUTHORIZATION_CONTEXT_KEY) ||
       process.env.MOCK_TOKEN,
+    refreshToken: httpContext.get(config.REFRESH_TOKEN_CONTEXT_KEY),
     identity: httpContext.get(config?.IDENTITY_HEADER_KEY),
     uuid,
     url: requestURL.toString(),
@@ -208,18 +210,25 @@ router.post(
 
     try {
       const requiredCalls = requestConfigs.length;
+      const authState: AuthState = {
+        authHeader:
+          httpContext.get(config.AUTHORIZATION_CONTEXT_KEY) ||
+          process.env.MOCK_TOKEN,
+        refreshToken: httpContext.get(config.REFRESH_TOKEN_CONTEXT_KEY),
+        authCookie: httpContext.get(config.JWT_COOKIE_NAME),
+      };
       if (requiredCalls === 1) {
         const pdfDetails = getPdfRequestBody(requestConfigs[0]);
         apiLogger.debug(`Single call to generator queued for ${collectionId}`);
         pdfCache.setExpectedLength(collectionId, requiredCalls);
-        generatePdf(pdfDetails, collectionId, 1);
+        generatePdf(pdfDetails, collectionId, 1, authState);
         return res.status(202).send({ statusID: collectionId });
       }
       pdfCache.setExpectedLength(collectionId, requiredCalls);
       apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
       for (let x = 0; x < Number(requiredCalls); x++) {
         const pdfDetails = getPdfRequestBody(requestConfigs[x]);
-        generatePdf(pdfDetails, collectionId, x + 1);
+        generatePdf(pdfDetails, collectionId, x + 1, authState);
       }
 
       return res.status(202).send({ statusID: collectionId });
