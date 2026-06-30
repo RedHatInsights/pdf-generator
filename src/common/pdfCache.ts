@@ -60,6 +60,7 @@ export type PDFComponentGroup = {
   expectedLength: number;
   status: PdfStatus;
   error?: string;
+  merging?: boolean;
 };
 export type PDFComponent = {
   status: PdfStatus;
@@ -257,10 +258,24 @@ class PdfCache {
     }
 
     if (this.allComponentsGenerated(collectionId, components)) {
-      // Everything is generated and looks good, kick off an async job
-      // to store them in a single PDF
-      await this.mergePDFsFromCompleteCollection(collectionId);
-      this.updateCollectionState(collectionId, PdfStatus.Generated);
+      // Guard against concurrent merge attempts
+      if (this.data[collectionId].merging) {
+        return;
+      }
+      this.data[collectionId].merging = true;
+
+      // Fire-and-forget: merge in background without blocking
+      const mergePromise = this.mergePDFsFromCompleteCollection(collectionId);
+      if (mergePromise) {
+        mergePromise
+          .then(() => {
+            this.updateCollectionState(collectionId, PdfStatus.Generated);
+          })
+          .catch((error) => {
+            apiLogger.error(`Merge failed for ${collectionId}: ${error}`);
+            this.data[collectionId].merging = false;
+          });
+      }
     }
   }
 

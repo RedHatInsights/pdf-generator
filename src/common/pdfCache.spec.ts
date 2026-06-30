@@ -197,3 +197,110 @@ describe('Pdf Cache updates', () => {
     expect(added.status).toBe('Generating');
   });
 });
+
+function makeComponent(
+  collectionId: string,
+  componentId: string,
+  status: PdfStatus,
+  order: number,
+): PDFComponent {
+  return {
+    status,
+    filepath:
+      status === PdfStatus.Generated
+        ? `/tmp/report_${componentId}.pdf`
+        : '',
+    collectionId,
+    componentId,
+    numPages: status === PdfStatus.Generated ? 6 : 0,
+    error: status === PdfStatus.Failed ? 'some error' : "''",
+    order,
+  };
+}
+
+describe('verifyCollection non-blocking merge behavior', () => {
+  /**
+   * verifyCollection should trigger merge in background and return immediately,
+   * preventing status endpoint from blocking on large collection merges.
+   */
+  const pdfCache = PdfCache.getInstance();
+  const collectionId = 'non-blocking-merge-test-collection';
+
+  afterAll(() => {
+    pdfCache.clearAllTimers();
+  });
+
+  it('should return before merge completes', async () => {
+    let mergeStarted = false;
+    let mergeFinished = false;
+
+    const mergeSpy = jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockImplementation(async () => {
+        mergeStarted = true;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        mergeFinished = true;
+      });
+
+    pdfCache.setExpectedLength(collectionId, 3);
+    for (let i = 1; i <= 3; i++) {
+      pdfCache.addToCollection(
+        collectionId,
+        makeComponent(collectionId, `merge-comp-${i}`, PdfStatus.Generated, i),
+      );
+    }
+
+    await pdfCache.verifyCollection(collectionId);
+
+    expect(mergeStarted).toBe(true);
+    expect(mergeFinished).toBe(false);
+
+    mergeSpy.mockRestore();
+  });
+});
+
+describe('verifyCollection merge concurrency guard', () => {
+  /**
+   * Concurrent verifyCollection calls should trigger merge only once.
+   * Prevents duplicate merges when UpdateStatus and status endpoint
+   * both call verifyCollection simultaneously.
+   */
+  const pdfCache = PdfCache.getInstance();
+  const collectionId = 'merge-guard-test-collection';
+
+  afterAll(() => {
+    pdfCache.clearAllTimers();
+  });
+
+  it('should trigger merge only once for concurrent calls', async () => {
+    let mergeCallCount = 0;
+
+    const mergeSpy = jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockImplementation(async () => {
+        mergeCallCount++;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+
+    pdfCache.setExpectedLength(collectionId, 2);
+    pdfCache.addToCollection(
+      collectionId,
+      makeComponent(collectionId, 'race-comp-1', PdfStatus.Generated, 1),
+    );
+    pdfCache.addToCollection(
+      collectionId,
+      makeComponent(collectionId, 'race-comp-2', PdfStatus.Generated, 2),
+    );
+
+    await Promise.all([
+      pdfCache.verifyCollection(collectionId),
+      pdfCache.verifyCollection(collectionId),
+    ]);
+
+    expect(mergeCallCount).toBe(1);
+
+    mergeSpy.mockRestore();
+  });
+});
