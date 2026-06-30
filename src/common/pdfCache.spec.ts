@@ -207,9 +207,7 @@ function makeComponent(
   return {
     status,
     filepath:
-      status === PdfStatus.Generated
-        ? `/tmp/report_${componentId}.pdf`
-        : '',
+      status === PdfStatus.Generated ? `/tmp/report_${componentId}.pdf` : '',
     collectionId,
     componentId,
     numPages: status === PdfStatus.Generated ? 6 : 0,
@@ -302,5 +300,49 @@ describe('verifyCollection merge concurrency guard', () => {
     expect(mergeCallCount).toBe(1);
 
     mergeSpy.mockRestore();
+  });
+});
+
+describe('expectedLength cross-pod sync via Kafka', () => {
+  /**
+   * Simulates pod receiving component updates via Kafka without
+   * the setExpectedLength call (which only runs on the create handler pod).
+   */
+  const pdfCache = PdfCache.getInstance();
+  const collectionId = 'kafka-sync-test-collection';
+
+  afterAll(() => {
+    pdfCache.clearAllTimers();
+  });
+
+  it('should apply expectedLength from Kafka messages', async () => {
+    const mockMerge = jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockImplementation(async () => {});
+
+    // Simulate Kafka consumer receiving components with expectedLength piggybacked
+    for (let i = 1; i <= 5; i++) {
+      const component = makeComponent(
+        collectionId,
+        `comp-${i}`,
+        PdfStatus.Generated,
+        i,
+      );
+      // Add expectedLength to component (simulating Kafka message payload)
+      component.expectedLength = 5;
+      pdfCache.addToCollection(collectionId, component);
+    }
+
+    const collection = pdfCache.getCollection(collectionId);
+    expect(collection.expectedLength).toBe(5);
+    expect(collection.components.length).toBe(5);
+
+    await pdfCache.verifyCollection(collectionId);
+
+    // Should transition to Generated (not stuck at Generating)
+    expect(mockMerge).toHaveBeenCalledWith(collectionId);
+
+    mockMerge.mockRestore();
   });
 });

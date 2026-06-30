@@ -70,6 +70,7 @@ export type PDFComponent = {
   error?: string;
   numPages?: number;
   order?: number;
+  expectedLength?: number;
 };
 
 const addPageNumbers = async (pdfBuffer: Uint8Array): Promise<Uint8Array> => {
@@ -141,6 +142,15 @@ class PdfCache {
       ({ componentId }) => componentId !== status.componentId,
     );
     this.data[collectionId].components.push(status);
+
+    // Apply expectedLength if present in component (piggybacked from Kafka)
+    if (
+      status.expectedLength !== undefined &&
+      status.expectedLength > 0 &&
+      this.data[collectionId].expectedLength === 0
+    ) {
+      this.data[collectionId].expectedLength = status.expectedLength;
+    }
   }
 
   public getCollection(id: string): PDFComponentGroup {

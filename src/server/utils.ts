@@ -7,7 +7,12 @@ const pdfCache = PdfCache.getInstance();
 
 export const UpdateStatus = async (updateMessage: PDFComponent) => {
   pdfCache.addToCollection(updateMessage.collectionId, updateMessage);
-  await produceMessage(UPDATE_TOPIC, updateMessage)
+  const collection = pdfCache.getCollection(updateMessage.collectionId);
+  const messageWithLength = {
+    ...updateMessage,
+    expectedLength: collection?.expectedLength || 0,
+  };
+  await produceMessage(UPDATE_TOPIC, messageWithLength)
     .then(() => {
       apiLogger.debug('Generating message sent');
     })

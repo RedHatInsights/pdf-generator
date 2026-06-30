@@ -137,6 +137,7 @@ export async function consumeMessages(topic: string) {
           numPages: updateMessage?.numPages || 0,
           error: updateMessage?.error || `''`,
           order: updateMessage?.order,
+          expectedLength: cacheObject.expectedLength,
         });
       } catch (error) {
         apiLogger.debug(`Message sync error: ${JSON.stringify(error)}`);
