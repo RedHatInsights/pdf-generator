@@ -103,9 +103,11 @@ const addPageNumbers = async (pdfBuffer: Uint8Array): Promise<Uint8Array> => {
 class PdfCache {
   private static instance: PdfCache;
   private data: PdfCollection;
+  private timers: Map<string, NodeJS.Timeout>;
 
   private constructor() {
     this.data = {};
+    this.timers = new Map();
   }
 
   public static getInstance(): PdfCache {
@@ -145,6 +147,11 @@ class PdfCache {
   }
 
   public deleteCollection(id: string) {
+    const timer = this.timers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.timers.delete(id);
+    }
     delete this.data[id];
   }
 
@@ -273,16 +280,33 @@ class PdfCache {
   }
 
   public cleanExpiredCollection(uuid: string) {
+    // Clear any existing timer for this collection
+    const existingTimer = this.timers.get(uuid);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
     apiLogger.debug(
       `Timeout for ${uuid} has been set to ${formatTimeToEnglish(
         ENTRY_TIMEOUT,
       )}`,
     );
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       // This should potentially also call the objectStore to remove the PDF(s)
       apiLogger.debug(`Removing expired collection ${uuid}`);
       this.deleteCollection(uuid);
     }, ENTRY_TIMEOUT);
+
+    // Allow Node to exit even if this timer is still pending
+    timer.unref();
+    this.timers.set(uuid, timer);
+  }
+
+  public clearAllTimers(): void {
+    for (const timer of this.timers.values()) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
   }
 
   // After all slices of a PDF have been marked as "Generated", we can

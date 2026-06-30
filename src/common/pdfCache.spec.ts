@@ -1,10 +1,15 @@
 import PdfCache, { PDFComponent, PdfStatus } from './pdfCache';
 
 describe('Pdf Cache updates', () => {
+  const pdfCache = PdfCache.getInstance();
+
   beforeEach(() => {
     jest.resetAllMocks();
   });
-  const pdfCache = PdfCache.getInstance();
+
+  afterAll(() => {
+    pdfCache.clearAllTimers();
+  });
   const cache: PDFComponent = {
     status: PdfStatus.Failed,
     filepath: '',
