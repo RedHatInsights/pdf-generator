@@ -86,7 +86,6 @@ function addProxy(req: GenerateHandlerRequest) {
         preserveHeaderKeyCase: true,
         on: {
           proxyReq: (proxyReq) => {
-            console.log('THIS SHOULD NOT BE HERE');
             const authHeader = proxyReq.getHeader(
               config.AUTHORIZATION_CONTEXT_KEY,
             );
