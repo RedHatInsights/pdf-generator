@@ -8,6 +8,8 @@ For local development you need to create a default `.env` file with the followin
 MINIO_ACCESS_KEY="minioadmin"
 MINIO_SECRET_KEY="minioadmin"
 MAX_CONCURRENCY=2
+LOG_LEVEL=debug
+SSO_URL=https://sso.stage.redhat.com/auth/
 ```
 
 Then run
