@@ -200,19 +200,22 @@ class PdfCache {
     collectionId: string,
     status: PdfStatus,
     error?: string,
+    overwriteComponentStatus = true,
   ): void {
     if (!this.data[collectionId]) {
       throw new Error('Collection not found');
     }
 
-    this.data[collectionId].components = this.data[collectionId].components.map(
-      (component) => {
+    if (overwriteComponentStatus) {
+      this.data[collectionId].components = this.data[
+        collectionId
+      ].components.map((component) => {
         return {
           ...component,
           status,
         };
-      },
-    );
+      });
+    }
     this.data[collectionId].status = status;
     this.data[collectionId].error = error;
   }
@@ -237,7 +240,7 @@ class PdfCache {
   }
 
   public invalidateCollection(collectionId: string, error: string): void {
-    this.updateCollectionState(collectionId, PdfStatus.Failed, error);
+    this.updateCollectionState(collectionId, PdfStatus.Failed, error, false);
   }
 
   public async verifyCollection(collectionId: string): Promise<void> {

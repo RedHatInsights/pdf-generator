@@ -3,6 +3,7 @@ import config from '../common/config';
 const BROWSER_TIMEOUT = 120_000;
 import { CHROMIUM_PATH } from '../browser/helpers';
 import { apiLogger } from '../common/logging';
+import PdfCache from '../common/pdfCache';
 
 export const GetPupCluster = async () => {
   const CONCURRENCY_DEFAULT = 2;
@@ -39,6 +40,16 @@ export const GetPupCluster = async () => {
   // Add error handlers to prevent unhandled rejections from cluster tasks
   cluster.on('taskerror', (err: Error, data: unknown) => {
     apiLogger.error('Puppeteer cluster task error:', err, 'data:', data);
+
+    // After all retries exhausted, invalidate the entire collection
+    if (data && typeof data === 'object' && 'collectionId' in data) {
+      const collectionId = (data as { collectionId: string }).collectionId;
+      const message = err instanceof Error ? err.message : String(err);
+      apiLogger.error(
+        `Collection ${collectionId} failed after retries: ${message}`,
+      );
+      PdfCache.getInstance().invalidateCollection(collectionId, message);
+    }
   });
 
   return cluster;

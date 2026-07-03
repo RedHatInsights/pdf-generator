@@ -346,3 +346,39 @@ describe('expectedLength cross-pod sync via Kafka', () => {
     mockMerge.mockRestore();
   });
 });
+
+describe('invalidateCollection preserves component status', () => {
+  const pdfCache = PdfCache.getInstance();
+
+  afterAll(() => {
+    pdfCache.clearAllTimers();
+  });
+
+  it('should preserve component statuses when invalidating collection', () => {
+    const collectionId = 'preserve-status-collection';
+    pdfCache.setExpectedLength(collectionId, 3);
+    pdfCache.addToCollection(
+      collectionId,
+      makeComponent(collectionId, 'comp-success', PdfStatus.Generated, 1),
+    );
+    pdfCache.addToCollection(
+      collectionId,
+      makeComponent(collectionId, 'comp-fail', PdfStatus.Failed, 2),
+    );
+    pdfCache.addToCollection(
+      collectionId,
+      makeComponent(collectionId, 'comp-pending', PdfStatus.Generating, 3),
+    );
+
+    pdfCache.invalidateCollection(collectionId, 'Cluster retry exhausted');
+
+    const collection = pdfCache.getCollection(collectionId);
+    expect(collection.status).toBe(PdfStatus.Failed);
+    expect(collection.error).toBe('Cluster retry exhausted');
+
+    // Component statuses preserved (not overwritten to Failed)
+    expect(collection.components[0].status).toBe(PdfStatus.Generated);
+    expect(collection.components[1].status).toBe(PdfStatus.Failed);
+    expect(collection.components[2].status).toBe(PdfStatus.Generating);
+  });
+});

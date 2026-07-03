@@ -271,7 +271,9 @@ async function runPageTask(
         order,
         error: message,
       });
-      PdfCache.getInstance().invalidateCollection(collectionId, message);
+      // Do not invalidate collection here - let cluster retries run first
+      // Collection invalidation happens in cluster.ts taskerror handler
+      throw taskError;
     } finally {
       await page.close().catch(() => {});
     }

@@ -176,7 +176,9 @@ describe('generatePdf', () => {
       const req = makePdfRequest();
       initCollection('coll-err');
 
-      await generatePdf(req, 'coll-err', 1, makeAuthState());
+      await expect(
+        generatePdf(req, 'coll-err', 1, makeAuthState()),
+      ).rejects.toThrow('Page render error');
 
       expect(UpdateStatus).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -188,22 +190,26 @@ describe('generatePdf', () => {
       );
     });
 
-    it('invalidates the collection on render error', async () => {
+    it('throws error without invalidating collection (retry handled by cluster)', async () => {
       mockPage.evaluate.mockResolvedValue('Some error');
       initCollection('coll-inv');
       const pdfCache = PdfCache.getInstance();
       const spy = jest.spyOn(pdfCache, 'invalidateCollection');
 
-      await generatePdf(makePdfRequest(), 'coll-inv', 1, makeAuthState());
+      await expect(
+        generatePdf(makePdfRequest(), 'coll-inv', 1, makeAuthState()),
+      ).rejects.toThrow('Page render error');
 
-      expect(spy).toHaveBeenCalledWith('coll-inv', expect.any(String));
+      expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     });
 
     it('closes the page after render error', async () => {
       mockPage.evaluate.mockResolvedValue('Error');
       initCollection('coll-close-err');
-      await generatePdf(makePdfRequest(), 'coll-close-err', 1, makeAuthState());
+      await expect(
+        generatePdf(makePdfRequest(), 'coll-close-err', 1, makeAuthState()),
+      ).rejects.toThrow();
       expect(mockPage.close).toHaveBeenCalled();
     });
   });
@@ -217,7 +223,9 @@ describe('generatePdf', () => {
       const req = makePdfRequest();
       initCollection('coll-500');
 
-      await generatePdf(req, 'coll-500', 1, makeAuthState());
+      await expect(
+        generatePdf(req, 'coll-500', 1, makeAuthState()),
+      ).rejects.toThrow('Puppeteer error');
 
       expect(UpdateStatus).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -233,7 +241,9 @@ describe('generatePdf', () => {
       const req = makePdfRequest();
       initCollection('coll-null');
 
-      await generatePdf(req, 'coll-null', 1, makeAuthState());
+      await expect(
+        generatePdf(req, 'coll-null', 1, makeAuthState()),
+      ).rejects.toThrow('Puppeteer error');
 
       expect(UpdateStatus).toHaveBeenLastCalledWith(
         expect.objectContaining({
@@ -251,7 +261,9 @@ describe('generatePdf', () => {
       const req = makePdfRequest();
       initCollection('coll-timeout');
 
-      await generatePdf(req, 'coll-timeout', 1, makeAuthState());
+      await expect(
+        generatePdf(req, 'coll-timeout', 1, makeAuthState()),
+      ).rejects.toThrow('timeout');
 
       expect(UpdateStatus).toHaveBeenLastCalledWith(
         expect.objectContaining({
