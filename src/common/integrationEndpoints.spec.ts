@@ -9,13 +9,12 @@ import {
 
 const endpoint = (
   partial: Partial<Endpoint> & Pick<Endpoint, 'app' | 'name'>,
-): Endpoint =>
-  ({
-    hostname: 'h.example.svc',
-    port: 8000,
-    tlsPort: 0,
-    ...partial,
-  }) as Endpoint;
+): Endpoint => ({
+  hostname: 'h.example.svc',
+  port: 8000,
+  tlsPort: 0,
+  ...partial,
+});
 
 describe('mergeClowderEndpoints', () => {
   it('returns empty map when there are no integrated endpoints', () => {

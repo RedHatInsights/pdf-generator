@@ -1,6 +1,5 @@
 import winston from 'winston';
 import config from './config';
-import { LoggerOptionsWithTransports } from 'express-winston';
 import expressWinston from 'express-winston';
 import { Request, Response } from 'express';
 
@@ -62,4 +61,4 @@ export const requestLogger = expressWinston.logger({
         return false;
       }
     : skipInfoLogs,
-} as LoggerOptionsWithTransports);
+});

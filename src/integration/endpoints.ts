@@ -5,7 +5,7 @@ export enum ServiceNames {
   'chrome-service' = 'chrome-service',
   'advisor-backend' = 'advisor-backend',
   'vulnerability-engine' = 'vulnerability-engine',
-  'compliance' = 'compliance',
+  compliance = 'compliance',
   'ccx-smart-proxy' = 'ccx-smart-proxy',
 }
 
