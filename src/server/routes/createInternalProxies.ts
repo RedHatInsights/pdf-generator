@@ -22,6 +22,9 @@ function createInternalProxies() {
       pathRewrite: (path) => path.replace(internalRegEx, ''),
       on: {
         proxyReq: (proxyReq) => {
+          if (proxyReq.headersSent) {
+            return;
+          }
           const authHeader = proxyReq.getHeader(
             instanceConfig.AUTHORIZATION_CONTEXT_KEY,
           );

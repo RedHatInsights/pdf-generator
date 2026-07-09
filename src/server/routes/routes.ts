@@ -57,6 +57,9 @@ function addProxy(req: GenerateHandlerRequest) {
       autoRewrite: true,
       on: {
         proxyReq: (proxyReq) => {
+          if (proxyReq.headersSent) {
+            return;
+          }
           const strippedHost = config.scalprum.assetsHost.replace(
             /^https?:\/\//,
             '',
@@ -85,6 +88,9 @@ function addProxy(req: GenerateHandlerRequest) {
         preserveHeaderKeyCase: true,
         on: {
           proxyReq: (proxyReq) => {
+            if (proxyReq.headersSent) {
+              return;
+            }
             const authHeader = proxyReq.getHeader(
               config.AUTHORIZATION_CONTEXT_KEY,
             );
