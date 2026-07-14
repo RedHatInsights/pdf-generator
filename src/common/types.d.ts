@@ -16,6 +16,7 @@ export type GeneratePayload = {
   landscape?: boolean;
   identity?: string;
   authCookie?: string;
+  renderReadiness?: 'explicit-v1';
 };
 
 export type PreviewHandlerRequest = Request<

@@ -6,7 +6,14 @@ import ScalprumProvider, {
   ScalprumComponentProps,
 } from '@scalprum/react-core';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { createRoot } from 'react-dom/client';
 import { GeneratePayload } from '../common/types';
 import {
@@ -31,6 +38,69 @@ if (typeof state.fetchDataParams === 'string') {
 }
 if (typeof state.additionalData === 'string') {
   state.additionalData = JSON.parse(state.additionalData);
+}
+
+const isExplicitReadiness = state.renderReadiness === 'explicit-v1';
+const rootElement = document.getElementById('root');
+
+if (isExplicitReadiness && rootElement) {
+  rootElement.setAttribute('data-pdf-readiness-contract', 'v1');
+  rootElement.setAttribute('data-pdf-ready', 'false');
+}
+
+async function waitForFonts(timeoutMs = 10000): Promise<void> {
+  await Promise.race([
+    document.fonts.ready,
+    new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('Font loading timeout')), timeoutMs),
+    ),
+  ]).catch((err) => {
+    console.warn('[crc-pdf-generator] Font wait failed, proceeding:', err);
+  });
+}
+
+async function waitForImages(container: Element): Promise<void> {
+  const images = Array.from(container.querySelectorAll('img'));
+  const pending = images.filter((img) => !img.complete);
+  await Promise.all(
+    pending.map((img) =>
+      new Promise<void>((resolve) => {
+        const done = () => resolve();
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      }).then(async () => {
+        if (typeof img.decode === 'function') {
+          await img.decode().catch(() => {});
+        }
+      }),
+    ),
+  );
+}
+
+function waitForTwoRAFs(): Promise<void> {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+}
+
+async function runReadinessGates(container: Element): Promise<void> {
+  (window as any).__fontTimestamp = Date.now();
+  await waitForFonts();
+  (window as any).__fontTimestamp = Date.now();
+  await waitForImages(container);
+  await waitForTwoRAFs();
+}
+
+type PdfReadyContextType = {
+  onPdfReady: () => void;
+};
+
+const PdfReadyContext = createContext<PdfReadyContextType>({
+  onPdfReady: () => {},
+});
+
+export function usePdfReady(): PdfReadyContextType {
+  return useContext(PdfReadyContext);
 }
 
 const config: AppsConfig = {
@@ -120,6 +190,21 @@ const MetadataWrapper = () => {
     error: null,
     data: null,
   });
+
+  const pdfReadyResolverRef = useRef<(() => void) | null>(null);
+  const pdfReadyPromiseRef = useRef<Promise<void> | null>(null);
+
+  if (isExplicitReadiness && !pdfReadyPromiseRef.current) {
+    pdfReadyPromiseRef.current = new Promise<void>((resolve) => {
+      pdfReadyResolverRef.current = resolve;
+    });
+  }
+
+  const handlePdfReady = useCallback(() => {
+    (window as any).__callbackTimestamp = Date.now();
+    pdfReadyResolverRef.current?.();
+  }, []);
+
   async function getFetchMetadata() {
     try {
       const fn = await getModule<FetchData | undefined>(
@@ -162,6 +247,30 @@ const MetadataWrapper = () => {
     getFetchMetadata();
   }, []);
 
+  useEffect(() => {
+    if (!isExplicitReadiness || asyncState.loading || asyncState.error) return;
+
+    let cancelled = false;
+    (async () => {
+      if (pdfReadyPromiseRef.current) {
+        await pdfReadyPromiseRef.current;
+      }
+      if (cancelled) return;
+      const container = document.getElementById('root');
+      if (container) {
+        await runReadinessGates(container);
+        if (!cancelled) {
+          (window as any).__readyTimestamp = Date.now();
+          container.setAttribute('data-pdf-ready', 'true');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [asyncState.loading, asyncState.error]);
+
   const { error, loading, data } = asyncState;
   if (error) {
     return <FetchErrorFallback error={error} />;
@@ -176,6 +285,7 @@ const MetadataWrapper = () => {
     {
       asyncData: { data: unknown };
       additionalData: Record<string, unknown> | undefined;
+      onPdfReady?: () => void;
     }
   > = {
     asyncData: { data },
@@ -184,12 +294,15 @@ const MetadataWrapper = () => {
     module: state.module,
     importName: state.importName,
     ErrorComponent: <FetchErrorFallback />,
+    onPdfReady: isExplicitReadiness ? handlePdfReady : undefined,
   };
   return (
-    // ensure CSS scope is applied
-    <div className={state.scope}>
-      <ScalprumComponent {...props} />
-    </div>
+    <PdfReadyContext.Provider value={{ onPdfReady: handlePdfReady }}>
+      {/* ensure CSS scope is applied */}
+      <div className={state.scope}>
+        <ScalprumComponent {...props} />
+      </div>
+    </PdfReadyContext.Provider>
   );
 };
 
@@ -226,7 +339,6 @@ const App = () => {
   );
 };
 
-const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Root element not found');
 
 const root = createRoot(rootElement);
