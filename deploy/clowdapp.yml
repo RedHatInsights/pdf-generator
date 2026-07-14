@@ -66,6 +66,12 @@ objects:
           value: ${SSO_URL}
         - name: SSO_CLIENT_ID
           value: ${SSO_CLIENT_ID}
+        - name: PDF_READINESS_ENABLED
+          value: ${PDF_READINESS_ENABLED}
+        - name: PDF_READINESS_FALLBACK_NETWORK_IDLE
+          value: ${PDF_READINESS_FALLBACK_NETWORK_IDLE}
+        - name: PDF_READINESS_CAPABILITY_DETECTION_MS
+          value: ${PDF_READINESS_CAPABILITY_DETECTION_MS}
         resources:
           limits:
             cpu: ${CPU_LIMIT_SERVICE}
@@ -128,3 +134,12 @@ parameters:
 - description: SSO client ID for token refresh
   name: SSO_CLIENT_ID
   value: "cloud-services"
+- description: Enable explicit PDF readiness contract (set to false to restore networkidle2)
+  name: PDF_READINESS_ENABLED
+  value: "true"
+- description: Allow networkidle fallback for legacy pages without v1 readiness contract
+  name: PDF_READINESS_FALLBACK_NETWORK_IDLE
+  value: "false"
+- description: Milliseconds to wait for v1 readiness contract marker after domcontentloaded
+  name: PDF_READINESS_CAPABILITY_DETECTION_MS
+  value: "500"

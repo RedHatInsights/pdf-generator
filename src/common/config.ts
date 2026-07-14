@@ -45,6 +45,9 @@ const defaultConfig: {
   SSO_CLIENT_ID: string;
   ACCOUNT_ID: string;
   LOG_LEVEL: string;
+  pdfReadinessEnabled: boolean;
+  pdfReadinessFallbackNetworkIdle: boolean;
+  pdfReadinessCapabilityDetectionMs: number;
   scalprum: {
     // for proxy request to /api
     apiHost: string;
@@ -117,6 +120,13 @@ const defaultConfig: {
   JWT_COOKIE_NAME: 'cs_jwt',
   ACCOUNT_ID: '',
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
+  pdfReadinessEnabled: process.env.PDF_READINESS_ENABLED !== 'false',
+  pdfReadinessFallbackNetworkIdle:
+    process.env.PDF_READINESS_FALLBACK_NETWORK_IDLE === 'true',
+  pdfReadinessCapabilityDetectionMs: parseInt(
+    process.env.PDF_READINESS_CAPABILITY_DETECTION_MS || '500',
+    10,
+  ),
   scalprum: {
     apiHost: process.env.API_HOST || 'blank',
     assetsHost: process.env.ASSETS_HOST || 'blank',
