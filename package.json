@@ -101,6 +101,9 @@
     "serve": "npx wait-on dist/server.js && nodemon dist/server.js",
     "start:server": "NODE_ENV=development npx concurrently \"npx webpack -c ./config/webpack.config.js -w\" \"npm run serve\"",
     "test": "jest --config jest.config.js",
+    "browser:install": "puppeteer browsers install chrome",
+    "test:e2e": "jest --config jest.e2e.config.js --runInBand",
+    "test:all": "npm test && npm run test:e2e",
     "api:validate": "npx vacuum lint  -d ./docs/openapi.json"
   },
   "watch": {

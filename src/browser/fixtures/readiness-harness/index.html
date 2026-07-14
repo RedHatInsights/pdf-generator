@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PDF Readiness Harness</title>
+</head>
+<body>
+  <div id="root" data-pdf-readiness-contract="v1" data-pdf-ready="false"></div>
+  <script>
+    (async function () {
+      var root = document.getElementById('root');
+      var SILENT_GAP_MS = 2500;
+
+      // Batch 1: fetch data, render content
+      var batch1 = await fetch('/api/batch/1').then(function (r) { return r.json(); });
+      root.innerHTML = batch1.items.map(function (item) {
+        return '<div class="batch-1">' + item + '</div>';
+      }).join('');
+
+      // Silent gap — no network requests for 2500ms
+      await new Promise(function (resolve) { setTimeout(resolve, SILENT_GAP_MS); });
+
+      // Batch 2: fetch data, render content with marker
+      var batch2 = await fetch('/api/batch/2').then(function (r) { return r.json(); });
+      root.innerHTML += batch2.items.map(function (item) {
+        return '<div class="batch-2">BATCH-2-MARKER: ' + item + '</div>';
+      }).join('');
+
+      // Consumer onPdfReady callback
+      window.__callbackTimestamp = Date.now();
+
+      // Font readiness gate
+      await document.fonts.ready;
+      window.__fontTimestamp = Date.now();
+
+      // Image readiness gate — load a 1x1 pixel PNG served by the test server
+      var img = document.createElement('img');
+      img.src = '/fixtures/test.png';
+      root.appendChild(img);
+      await new Promise(function (resolve) {
+        if (img.complete) { resolve(); return; }
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+
+      // Two rAF ticks
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(resolve);
+        });
+      });
+
+      // Set readiness
+      root.setAttribute('data-pdf-ready', 'true');
+      window.__readyTimestamp = Date.now();
+    })();
+  </script>
+</body>
+</html>

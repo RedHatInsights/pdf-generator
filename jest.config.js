@@ -14,4 +14,5 @@ module.exports = {
   },
   transformIgnorePatterns: ['node_modules/(?!(pdf-merger-js)/)'],
   testMatch: ['./**/*.spec.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '\\.e2e\\.spec\\.ts$'],
 };
