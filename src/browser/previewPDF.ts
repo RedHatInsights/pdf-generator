@@ -8,12 +8,7 @@ import {
 import config from '../common/config';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import { apiLogger } from '../common/logging';
-
-function delay(time: number) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, time);
-  });
-}
+import { navigateAndWaitForPdfReady } from './navigateAndWaitForPdfReady';
 
 const previewPdf = async (url: string) => {
   const createBuffer = async () => {
@@ -41,12 +36,7 @@ const previewPdf = async (url: string) => {
     await page.setCookie({ name: 'cs_jwt', value: 'bar', domain: 'localhost' });
     await page.setExtraHTTPHeaders(extraHeaders);
 
-    const pageStatus = await page.goto(url, {
-      waitUntil: 'networkidle2',
-    });
-
-    await delay(1000);
-    await page.waitForNetworkIdle();
+    const pageStatus = await navigateAndWaitForPdfReady(page, url);
     const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
 
     await setWindowProperty(

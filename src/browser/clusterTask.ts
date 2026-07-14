@@ -9,6 +9,7 @@ import { store } from '../common/store';
 import { UpdateStatus, isValidPageResponse } from '../server/utils';
 import { PdfGenerationError } from '../server/errors';
 import { cluster } from '../server/cluster';
+import { navigateAndWaitForPdfReady } from './navigateAndWaitForPdfReady';
 import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { isTokenExpiringSoon, refreshAccessToken } from './tokenRefresh';
@@ -177,12 +178,8 @@ async function runPageTask(
 
       await page.setExtraHTTPHeaders(extraHeaders);
 
-      const pageResponse = await page.goto(url, {
-        waitUntil: 'networkidle2',
+      const pageResponse = await navigateAndWaitForPdfReady(page, url, {
         timeout: BROWSER_TIMEOUT,
-      });
-      await page.waitForNetworkIdle({
-        idleTime: 1000,
       });
       const pageStatus = pageResponse?.status();
 
