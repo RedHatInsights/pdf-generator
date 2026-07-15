@@ -179,6 +179,58 @@ describe('Pdf Cache updates', () => {
     expect(pdfCache.isCollectionFailed('nonexistent-collection')).toBe(false);
   });
 
+  it('should mark collection Failed when merge throws', async () => {
+    const mergeId = 'merge-fail-fc64-4e51-910a-b1ff3918b440';
+    const comp1: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'a.pdf',
+      collectionId: mergeId,
+      componentId: 'merge-comp-1',
+      numPages: 1,
+    };
+    const comp2: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'b.pdf',
+      collectionId: mergeId,
+      componentId: 'merge-comp-2',
+      numPages: 1,
+    };
+    pdfCache.addToCollection(mergeId, comp1);
+    pdfCache.addToCollection(mergeId, comp2);
+    pdfCache.setExpectedLength(mergeId, 2);
+
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockRejectedValue(new Error('S3 download failed'));
+
+    await pdfCache.verifyCollection(mergeId);
+
+    const collection = pdfCache.getCollection(mergeId);
+    expect(collection.status).toBe(PdfStatus.Failed);
+    expect(collection.error).toContain('S3 download failed');
+  });
+
+  it('should not throw when merge fails', async () => {
+    const safeId = 'merge-safe-fc64-4e51-910a-b1ff3918b440';
+    const comp: PDFComponent = {
+      status: PdfStatus.Generated,
+      filepath: 'a.pdf',
+      collectionId: safeId,
+      componentId: 'safe-comp-1',
+      numPages: 1,
+    };
+    pdfCache.addToCollection(safeId, comp);
+    pdfCache.setExpectedLength(safeId, 1);
+
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
+      .mockRejectedValue(new Error('merge boom'));
+
+    await expect(pdfCache.verifyCollection(safeId)).resolves.toBeUndefined();
+  });
+
   it('should set the length properly when a collection has not been added directly', async () => {
     const notAdded: PDFComponent = {
       status: PdfStatus.Generated,
@@ -228,15 +280,13 @@ describe('verifyCollection non-blocking merge behavior', () => {
     pdfCache.clearAllTimers();
   });
 
-  it('should return before merge completes', async () => {
-    let mergeStarted = false;
+  it('should await merge before returning', async () => {
     let mergeFinished = false;
 
     const mergeSpy = jest
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .spyOn<PdfCache, any>(pdfCache, 'mergePDFsFromCompleteCollection')
       .mockImplementation(async () => {
-        mergeStarted = true;
         await new Promise((resolve) => setTimeout(resolve, 50));
         mergeFinished = true;
       });
@@ -251,8 +301,7 @@ describe('verifyCollection non-blocking merge behavior', () => {
 
     await pdfCache.verifyCollection(collectionId);
 
-    expect(mergeStarted).toBe(true);
-    expect(mergeFinished).toBe(false);
+    expect(mergeFinished).toBe(true);
 
     mergeSpy.mockRestore();
   });

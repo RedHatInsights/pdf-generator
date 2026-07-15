@@ -370,7 +370,8 @@ router.get(
       res.setHeader('Content-Disposition', `inline; filename="${ID}.pdf"`);
       res.setHeader('Content-Type', 'application/pdf');
       pdfReadable.pipe(res);
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       logSecurityEvent(
         {
           action: 'READ',
@@ -379,13 +380,13 @@ router.get(
           outcome: 'failure',
           principal: getPrincipalFromContext(),
         },
-        `Error: ${error}`,
+        `Error: ${message}`,
       );
-      res.status(400).send({
+      res.status(500).send({
         error: {
-          status: 400,
-          statusText: 'PDF status could not be determined',
-          description: `Error: ${error}`,
+          status: 500,
+          statusText: 'PDF download failed',
+          description: message,
         },
       });
     }
