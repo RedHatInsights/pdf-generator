@@ -145,20 +145,26 @@ const KafkaClient = (): Kafka | null => {
 const pdfCache = PdfCache.getInstance();
 const kafka = KafkaClient();
 
+const producer = kafka?.producer() ?? null;
+let connected: Promise<void> | null = null;
+function ensureConnected() {
+  if (!producer) {
+    return Promise.resolve();
+  }
+  if (!connected) connected = producer.connect();
+  return connected;
+}
+
 export async function produceMessage(topic: string, message: unknown) {
-  if (!kafka) {
+  if (!kafka || !producer) {
     apiLogger.debug('Kafka disabled, skipping produce');
     return;
   }
-  const producer = kafka.producer();
-
-  await producer.connect();
+  await ensureConnected();
   await producer.send({
     topic: topic,
     messages: [{ value: JSON.stringify(message) }],
   });
-
-  await producer.disconnect();
 }
 
 export async function consumeMessages(topic: string) {
