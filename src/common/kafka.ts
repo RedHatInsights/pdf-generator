@@ -151,8 +151,39 @@ function ensureConnected() {
   if (!producer) {
     return Promise.resolve();
   }
-  if (!connected) connected = producer.connect();
+  if (!connected) {
+    connected = producer.connect().catch((err) => {
+      connected = null;
+      throw err;
+    });
+  }
   return connected;
+}
+
+const DISCONNECT_TIMEOUT_MS = 5_000;
+
+export async function disconnectProducer() {
+  if (!producer) {
+    return;
+  }
+  if (connected) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<void>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error('Kafka connect timed out during shutdown')),
+        DISCONNECT_TIMEOUT_MS,
+      );
+    });
+    try {
+      await Promise.race([connected, timeout]);
+    } catch {
+      // timeout or connect failure — proceed with disconnect
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+    connected = null;
+    await producer.disconnect();
+  }
 }
 
 export async function produceMessage(topic: string, message: unknown) {

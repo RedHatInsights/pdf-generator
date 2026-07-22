@@ -58,4 +58,16 @@ describe('produceMessage', () => {
     expect(mockConnect).toHaveBeenCalledTimes(1);
     expect(mockSend).toHaveBeenCalledTimes(3);
   });
+
+  it('retries connect after a connection failure', async () => {
+    mockConnect.mockRejectedValueOnce(new Error('broker unavailable'));
+    const { produceMessage } = await import('./kafka');
+    await expect(produceMessage('topic-a', { foo: 1 })).rejects.toThrow(
+      'broker unavailable',
+    );
+    mockConnect.mockResolvedValueOnce(undefined);
+    await produceMessage('topic-a', { foo: 2 });
+    expect(mockConnect).toHaveBeenCalledTimes(2);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
 });
