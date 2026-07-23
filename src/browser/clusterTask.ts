@@ -71,20 +71,6 @@ async function runPageTask(
           apiLogger.debug(`[Headless log] ${msg.text()}`);
         });
 
-        page.on('response', async (response) => {
-          if (response.status() >= 400) {
-            let body = '';
-            try {
-              body = await response.text();
-            } catch {
-              body = '<unreadable>';
-            }
-            apiLogger.debug(
-              `[Headless response] ${response.status()} ${response.url()} | body=${body}`,
-            );
-          }
-        });
-
         await setWindowProperty(
           page,
           'customPuppeteerParams',
@@ -141,20 +127,34 @@ async function runPageTask(
           await interceptedRequest.continue();
         });
 
-        page.on('response', async (resp) => {
-          const respUrl = resp.url();
+        page.on('response', async (response) => {
+          const respUrl = response.url();
+
+          if (response.status() >= 400) {
+            let body = '';
+            try {
+              body = await response.text();
+            } catch {
+              body = '<unreadable>';
+            }
+            apiLogger.debug(
+              `[Headless response] ${response.status()} ${respUrl} | body=${body}`,
+            );
+            return;
+          }
+
           if (
-            resp.ok() &&
+            response.ok() &&
             respUrl.includes('/apps/') &&
             /\.(js|css)(\?|$)/.test(respUrl) &&
             !assetCache.has(assetCacheKey(respUrl))
           ) {
             try {
-              const body = await resp.buffer();
+              const body = await response.buffer();
               assetCache.set(assetCacheKey(respUrl), {
                 body,
                 contentType:
-                  resp.headers()['content-type'] ||
+                  response.headers()['content-type'] ||
                   (respUrl.match(/\.css(\?|$)/)
                     ? 'text/css'
                     : 'application/javascript'),
