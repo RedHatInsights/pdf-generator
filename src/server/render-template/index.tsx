@@ -6,10 +6,19 @@ import Header from './Header';
 import Footer from './Footer';
 import instanceConfig from '../../common/config';
 
+let cachedTemplates: {
+  headerTemplate: string;
+  footerTemplate: string;
+} | null = null;
+
 export function getHeaderAndFooterTemplates(): {
   headerTemplate: string;
   footerTemplate: string;
 } {
+  if (cachedTemplates) {
+    return cachedTemplates;
+  }
+
   const root = process.cwd();
   const headerBase = fs.readFileSync(
     path.resolve(root, 'public/templates/header-template.html'),
@@ -21,7 +30,7 @@ export function getHeaderAndFooterTemplates(): {
     { encoding: 'utf-8' },
   );
 
-  return {
+  cachedTemplates = {
     headerTemplate: headerBase.replace(
       '<div id="content"></div>',
       renderToStaticMarkup(<Header />),
@@ -31,6 +40,8 @@ export function getHeaderAndFooterTemplates(): {
       renderToStaticMarkup(<Footer />),
     ),
   };
+
+  return cachedTemplates;
 }
 
 function renderTemplate(payload: GeneratePayload) {
