@@ -51,6 +51,23 @@ function createInternalProxies() {
         changeOrigin: true,
         pathFilter: (path) => path.startsWith(`${prefix}/`) || path === prefix,
         pathRewrite: (path) => rewriteInternalProxiedPath(routeKey, path),
+        on: {
+          proxyReq: (proxyReq) => {
+            if (proxyReq.headersSent) {
+              return;
+            }
+            const authHeader = proxyReq.getHeader(
+              instanceConfig.AUTHORIZATION_CONTEXT_KEY,
+            );
+            if (authHeader) {
+              proxyReq.setHeader(
+                instanceConfig.AUTHORIZATION_HEADER_KEY,
+                authHeader,
+              );
+            }
+            proxyReq.removeHeader(instanceConfig.AUTHORIZATION_CONTEXT_KEY);
+          },
+        },
       });
     });
 }
