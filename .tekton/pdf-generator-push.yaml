@@ -24,6 +24,14 @@ spec:
     value: quay.io/redhat-user-workloads/hcc-platex-services-tenant/pdf-generator/pdf-generator:{{revision}}
   - name: dockerfile
     value: /Dockerfile
+  - name: unit-tests-script
+    value: |
+      #!/bin/bash
+      set -ex
+      PUPPETEER_SKIP_DOWNLOAD=true npm ci
+      npm run lint
+      npm run api:validate
+      npm test -- --maxWorkers=1
   pipelineRef:
     params:
     - name: url
@@ -31,11 +39,19 @@ spec:
     - name: revision
       value: main
     - name: pathInRepo
-      value: pipelines/docker-build-oci-ta.yaml
+      value: pipelines/platform-ui/docker-build-run-unit-tests.yaml
     resolver: git
   taskRunTemplate:
     serviceAccountName: build-pipeline-pdf-generator
   workspaces:
+  - name: workspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
