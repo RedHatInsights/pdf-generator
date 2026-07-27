@@ -22,6 +22,8 @@ public/*
 .DS_Store
 .vscode
 .nx
+.claude/settings.local.json
+.claude/worktrees/
 
 # Snyk
 .dccache
