@@ -205,6 +205,15 @@ router.post(
   async (req: GenerateHandlerRequest, res) => {
     addProxy(req);
     const collectionId = crypto.randomUUID();
+    if (!req.body?.payload) {
+      return res.status(400).json({
+        error: {
+          status: 400,
+          statusText: 'Bad Request',
+          description: 'Missing payload in request body',
+        },
+      });
+    }
     // for testing purposes
     const requestConfigs = Array.isArray(req.body.payload)
       ? req.body.payload

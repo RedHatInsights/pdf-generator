@@ -200,8 +200,10 @@ describe('addProxy', () => {
     mockConfig.IS_PRODUCTION = false;
   });
 
-  it('falls back apiHost and assetsHost to request origin when blank', async () => {
+  it('does not create proxies when apiHost is blank', async () => {
     await jest.isolateModulesAsync(async () => {
+      mockConfig.scalprum.apiHost = 'blank';
+      mockConfig.scalprum.assetsHost = 'https://console.redhat.com';
       const { sendTestRequest } =
         await import('../../__test-utils__/createTestApp');
       const router = (await import('./routes')).default;
@@ -209,16 +211,37 @@ describe('addProxy', () => {
       app.use(router);
 
       await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
-        Host: 'pdf.example.com',
+        Host: 'evil.example.com',
       });
 
-      expect(mockConfig.scalprum.apiHost).toBe('https://pdf.example.com');
-      expect(mockConfig.scalprum.assetsHost).toBe('https://pdf.example.com');
+      expect(mockConfig.scalprum.apiHost).toBe('blank');
+      expect(mockCreateProxyMiddleware).not.toHaveBeenCalled();
+    });
+  });
+
+  it('does not create proxies when assetsHost is blank', async () => {
+    await jest.isolateModulesAsync(async () => {
+      mockConfig.scalprum.apiHost = 'https://console.redhat.com';
+      mockConfig.scalprum.assetsHost = 'blank';
+      const { sendTestRequest } =
+        await import('../../__test-utils__/createTestApp');
+      const router = (await import('./routes')).default;
+      const app = express();
+      app.use(router);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'evil.example.com',
+      });
+
+      expect(mockConfig.scalprum.assetsHost).toBe('blank');
+      expect(mockCreateProxyMiddleware).not.toHaveBeenCalled();
     });
   });
 
   it('only registers asset and api proxies once', async () => {
     await jest.isolateModulesAsync(async () => {
+      mockConfig.scalprum.apiHost = 'https://console.redhat.com';
+      mockConfig.scalprum.assetsHost = 'https://console.redhat.com';
       const { sendTestRequest } =
         await import('../../__test-utils__/createTestApp');
       const router = (await import('./routes')).default;

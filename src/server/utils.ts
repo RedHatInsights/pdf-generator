@@ -49,3 +49,46 @@ export function sanitizeRecord(
   });
   return sanitizedRecord;
 }
+
+// manifestLocation must be a relative path or an absolute https:// URL.
+// Prevents javascript:, data:, and other dangerous URI schemes from being
+// loaded by the headless browser.
+const MANIFEST_RE = /^(https:\/\/[^\s<>"]+|\/[^\s<>"]*\.json)$/;
+
+// module must be a relative webpack module specifier, e.g. "./App".
+const MODULE_RE = /^\.\/[A-Za-z0-9_/.-]+$/;
+
+// scope must be a valid npm package name or identifier.
+const SCOPE_RE = /^[A-Za-z0-9_@/-]+$/;
+
+export type PayloadValidationError = { field: string; message: string };
+
+export function validatePayload(payload: {
+  manifestLocation: string;
+  module: string;
+  scope: string;
+}): PayloadValidationError | null {
+  if (
+    !payload.manifestLocation ||
+    !MANIFEST_RE.test(payload.manifestLocation)
+  ) {
+    return {
+      field: 'manifestLocation',
+      message:
+        'manifestLocation must be a relative JSON path or an absolute https:// URL',
+    };
+  }
+  if (!payload.module || !MODULE_RE.test(payload.module)) {
+    return {
+      field: 'module',
+      message: 'module must be a relative module path (e.g. "./App")',
+    };
+  }
+  if (!payload.scope || !SCOPE_RE.test(payload.scope)) {
+    return {
+      field: 'scope',
+      message: 'scope must be an alphanumeric identifier',
+    };
+  }
+  return null;
+}
