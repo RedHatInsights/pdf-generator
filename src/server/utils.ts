@@ -50,10 +50,42 @@ export function sanitizeRecord(
   return sanitizedRecord;
 }
 
-// manifestLocation must be a relative path or an absolute https:// URL.
+// manifestLocation must be a relative path or an absolute URL from allowed origins.
 // Prevents javascript:, data:, and other dangerous URI schemes from being
 // loaded by the headless browser.
-const MANIFEST_RE = /^(https:\/\/[^\s<>"]+|\/[^\s<>"]*\.json)$/;
+const RELATIVE_MANIFEST_RE = /^\/[^\s<>"]*\.json$/;
+
+const defaultManifestOrigins = [
+  'console.redhat.com',
+  'console.stage.redhat.com',
+];
+const envManifestOrigins =
+  process.env.MANIFEST_ALLOWED_ORIGINS?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? [];
+const manifestOrigins =
+  envManifestOrigins.length > 0 ? envManifestOrigins : defaultManifestOrigins;
+
+export const MANIFEST_ALLOWED_ORIGINS = new Set(manifestOrigins);
+if (process.env.NODE_ENV !== 'production') {
+  MANIFEST_ALLOWED_ORIGINS.add('localhost');
+}
+
+function isValidManifestLocation(manifestLocation: string): boolean {
+  if (RELATIVE_MANIFEST_RE.test(manifestLocation)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(manifestLocation);
+    const isLocalhost = url.hostname === 'localhost';
+    const protocolOk =
+      url.protocol === 'https:' || (isLocalhost && url.protocol === 'http:');
+    return protocolOk && MANIFEST_ALLOWED_ORIGINS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 // module must be a relative webpack module specifier, e.g. "./App".
 const MODULE_RE = /^\.\/[A-Za-z0-9_/.-]+$/;
@@ -70,12 +102,12 @@ export function validatePayload(payload: {
 }): PayloadValidationError | null {
   if (
     !payload.manifestLocation ||
-    !MANIFEST_RE.test(payload.manifestLocation)
+    !isValidManifestLocation(payload.manifestLocation)
   ) {
     return {
       field: 'manifestLocation',
       message:
-        'manifestLocation must be a relative JSON path or an absolute https:// URL',
+        'manifestLocation must be a relative JSON path or an absolute https:// URL from allowed origins',
     };
   }
   if (!payload.module || !MODULE_RE.test(payload.module)) {

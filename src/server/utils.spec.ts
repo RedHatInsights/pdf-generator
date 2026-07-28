@@ -1,7 +1,7 @@
 import { validatePayload } from './utils';
 
 const valid = {
-  manifestLocation: 'https://cloud.redhat.com/apps/foo/fed-mods.json',
+  manifestLocation: 'https://console.redhat.com/apps/foo/fed-mods.json',
   module: './App',
   scope: 'fooApp',
 };
@@ -19,6 +19,32 @@ describe('validatePayload', () => {
           manifestLocation: '/apps/foo/fed-mods.json',
         }),
       ).toBeNull();
+    });
+
+    it('accepts stage console origin', () => {
+      expect(
+        validatePayload({
+          ...valid,
+          manifestLocation:
+            'https://console.stage.redhat.com/apps/foo/fed-mods.json',
+        }),
+      ).toBeNull();
+    });
+
+    it('rejects disallowed https origins', () => {
+      const err = validatePayload({
+        ...valid,
+        manifestLocation: 'https://attacker.com/evil.json',
+      });
+      expect(err?.field).toBe('manifestLocation');
+    });
+
+    it('rejects subdomain attacks on allowed origins', () => {
+      const err = validatePayload({
+        ...valid,
+        manifestLocation: 'https://evil.console.redhat.com/foo.json',
+      });
+      expect(err?.field).toBe('manifestLocation');
     });
 
     it('rejects http:// URLs', () => {

@@ -7,6 +7,7 @@ import { Router, Request } from 'express';
 import httpContext from 'express-http-context';
 import renderTemplate from '../render-template';
 import config from '../../common/config';
+import { MANIFEST_ALLOWED_ORIGINS, validatePayload } from '../utils';
 import previewPdf from '../../browser/previewPDF';
 import {
   GenerateHandlerRequest,
@@ -37,21 +38,19 @@ createInternalProxies().forEach((proxy) => {
   router.use(proxy);
 });
 
-function addProxy(req: GenerateHandlerRequest) {
+function addProxy() {
   if (!hasProxy) {
     if (config.scalprum.apiHost === 'blank') {
-      const apiHost = 'https' + '://' + req.get('host');
-      config.scalprum.apiHost = apiHost;
-      apiLogger.debug(
-        `The variable apiHost is not in config! Falling back to request origin host: ${apiHost}`,
+      apiLogger.warn(
+        'API_HOST is not configured — API proxy will not be created. Set API_HOST in deployment config.',
       );
+      return;
     }
     if (config.scalprum.assetsHost === 'blank') {
-      const assetsHost = 'https' + '://' + req.get('host');
-      config.scalprum.assetsHost = assetsHost;
-      apiLogger.debug(
-        `The variable assetsHost is not in config! Falling back to request origin host: ${assetsHost}`,
+      apiLogger.warn(
+        'ASSETS_HOST is not configured — assets proxy will not be created. Set ASSETS_HOST in deployment config.',
       );
+      return;
     }
     const assetsProxy = createProxyMiddleware({
       target: config.scalprum.assetsHost,
@@ -169,7 +168,7 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
 // Middleware that activates on all routes, responsible for rendering the correct
 // template/component into html to the requester.
 router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
-  addProxy(req as any);
+  addProxy();
   const payload = req.query;
   if (!payload) {
     apiLogger.warning('Missing template, using "demo"');
@@ -183,6 +182,24 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
     }
 
     const HTMLTemplate: string = renderTemplate(payload);
+    // Defense-in-depth: restrict what the headless browser page can load/execute.
+    const allowedOriginsWithScheme = [...MANIFEST_ALLOWED_ORIGINS]
+      .map((host) => `https://${host}`)
+      .join(' ');
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'none'",
+        `script-src 'self' 'unsafe-inline' ${allowedOriginsWithScheme}`,
+        `style-src 'self' 'unsafe-inline' ${allowedOriginsWithScheme}`,
+        `img-src 'self' data: blob: ${allowedOriginsWithScheme}`,
+        `font-src 'self' data: ${allowedOriginsWithScheme}`,
+        `connect-src 'self' ${allowedOriginsWithScheme}`,
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'none'",
+      ].join('; '),
+    );
     res.send(HTMLTemplate);
   } catch (error) {
     // render error to DOM to retrieve the error content from puppeteer
@@ -218,6 +235,21 @@ router.post(
     const requestConfigs = Array.isArray(req.body.payload)
       ? req.body.payload
       : [req.body.payload];
+
+    for (const payload of requestConfigs) {
+      const validationError = validatePayload(payload);
+      if (validationError) {
+        return res.status(400).json({
+          error: {
+            status: 400,
+            statusText: 'Bad Request',
+            description: `Invalid field "${validationError.field}": ${validationError.message}`,
+          },
+        });
+      }
+    }
+
+    addProxy();
 
     const configHeaders: string | string[] | undefined =
       req.headers[config?.OPTIONS_HEADER_NAME];
@@ -410,7 +442,17 @@ router.post(
 );
 
 router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
-  addProxy(req as any);
+  const validationError = validatePayload(req.query);
+  if (validationError) {
+    return res.status(400).json({
+      error: {
+        status: 400,
+        statusText: 'Bad Request',
+        description: `Invalid field "${validationError.field}": ${validationError.message}`,
+      },
+    });
+  }
+  addProxy();
   const pdfUrl = new URL(`http://localhost:${config?.webPort}/puppeteer`);
   pdfUrl.searchParams.append('manifestLocation', req.query.manifestLocation);
   pdfUrl.searchParams.append('scope', req.query.scope);
