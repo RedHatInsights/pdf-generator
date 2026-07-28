@@ -9,7 +9,6 @@ import renderTemplate from '../render-template';
 import config from '../../common/config';
 import previewPdf from '../../browser/previewPDF';
 import {
-  AuthState,
   GenerateHandlerRequest,
   PdfRequestBody,
   PuppeteerBrowserRequest,
@@ -21,6 +20,7 @@ import { store } from '../../common/store';
 import { UpdateStatus } from '../utils';
 import { cluster } from '../cluster';
 import { generatePdf } from '../../browser/clusterTask';
+import { TokenManager } from '../../browser/tokenRefresh';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import createInternalProxies from './createInternalProxies';
 import instanceConfig from '../../common/config';
@@ -115,7 +115,7 @@ function addProxy(req: GenerateHandlerRequest) {
   }
 }
 
-function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
+export function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
   const {
     manifestLocation,
     module,
@@ -123,6 +123,7 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
     fetchDataParams,
     additionalData,
     importName,
+    renderReadiness,
   } = payload;
   const uuid = crypto.randomUUID();
   const requestURL = new URL(`http://localhost:${config?.webPort}/puppeteer`);
@@ -143,6 +144,9 @@ function getPdfRequestBody(payload: GeneratePayload): PdfRequestBody {
       'additionalData',
       JSON.stringify(payload.additionalData),
     );
+  }
+  if (renderReadiness) {
+    requestURL.searchParams.append('renderReadiness', renderReadiness);
   }
 
   return {
@@ -210,25 +214,26 @@ router.post(
 
     try {
       const requiredCalls = requestConfigs.length;
-      const authState: AuthState = {
-        authHeader:
-          httpContext.get(config.AUTHORIZATION_CONTEXT_KEY) ||
+      const tokenManager = new TokenManager(
+        httpContext.get(config.AUTHORIZATION_CONTEXT_KEY) ||
           process.env.MOCK_TOKEN,
-        refreshToken: httpContext.get(config.REFRESH_TOKEN_CONTEXT_KEY),
-        authCookie: httpContext.get(config.JWT_COOKIE_NAME),
-      };
+        httpContext.get(config.REFRESH_TOKEN_CONTEXT_KEY),
+      );
+      const authCookie: string | undefined = httpContext.get(
+        config.JWT_COOKIE_NAME,
+      );
       if (requiredCalls === 1) {
         const pdfDetails = getPdfRequestBody(requestConfigs[0]);
         apiLogger.debug(`Single call to generator queued for ${collectionId}`);
         pdfCache.setExpectedLength(collectionId, requiredCalls);
-        generatePdf(pdfDetails, collectionId, 1, authState);
+        generatePdf(pdfDetails, collectionId, 1, tokenManager, authCookie);
         return res.status(202).send({ statusID: collectionId });
       }
       pdfCache.setExpectedLength(collectionId, requiredCalls);
       apiLogger.debug(`Queueing ${requiredCalls} for ${collectionId}`);
       for (let x = 0; x < Number(requiredCalls); x++) {
         const pdfDetails = getPdfRequestBody(requestConfigs[x]);
-        generatePdf(pdfDetails, collectionId, x + 1, authState);
+        generatePdf(pdfDetails, collectionId, x + 1, tokenManager, authCookie);
       }
 
       return res.status(202).send({ statusID: collectionId });
@@ -371,6 +376,9 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
       'fetchDataParams',
       JSON.stringify(req.query.fetchDataParams),
     );
+  }
+  if (req.query.renderReadiness) {
+    pdfUrl.searchParams.append('renderReadiness', req.query.renderReadiness);
   }
 
   try {

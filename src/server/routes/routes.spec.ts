@@ -1,4 +1,67 @@
+jest.mock('../cluster', () => ({
+  cluster: {
+    queue: jest.fn(),
+    idle: jest.fn(),
+  },
+}));
+
+jest.mock('../../browser/clusterTask', () => ({
+  generatePdf: jest.fn(),
+}));
+
+jest.mock('../../browser/previewPDF', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('../render-template', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('./createInternalProxies', () => ({
+  __esModule: true,
+  default: () => [],
+}));
+
+jest.mock('http-proxy-middleware', () => ({
+  createProxyMiddleware: jest.fn(),
+}));
+
+jest.mock('express-http-context', () => ({
+  get: jest.fn(),
+}));
+
+jest.mock('../../common/kafka', () => ({
+  produceMessage: jest.fn(),
+  KafkaClient: jest.fn(),
+}));
+
+jest.mock('../../common/store', () => ({
+  store: {
+    getObject: jest.fn(),
+    uploadPDF: jest.fn(),
+  },
+}));
+
+jest.mock('../../common/config', () => ({
+  __esModule: true,
+  default: {
+    webPort: 8000,
+    APIPrefix: '/api/crc-pdf-generator',
+    JWT_COOKIE_NAME: 'cs_jwt',
+    AUTHORIZATION_CONTEXT_KEY: 'x-pdf-auth',
+    REFRESH_TOKEN_CONTEXT_KEY: 'x-pdf-refresh-token',
+    IDENTITY_HEADER_KEY: 'x-rh-identity',
+    OPTIONS_HEADER_NAME: 'x-pdf-gen-options',
+    kafka: { brokers: [] },
+    scalprum: { apiHost: 'blank', assetsHost: 'blank' },
+  },
+}));
+
 import PdfCache, { PdfStatus, PDFComponent } from '../../common/pdfCache';
+import { getPdfRequestBody } from './routes';
+import { GeneratePayload } from '../../common/types';
 
 describe('Status endpoint error propagation', () => {
   const pdfCache = PdfCache.getInstance();
@@ -91,5 +154,35 @@ describe('Status endpoint error propagation', () => {
       expect(collection.status).toBe(PdfStatus.Failed);
       expect(collection.error).toBe('Network error fetching data');
     });
+  });
+});
+
+describe('getPdfRequestBody', () => {
+  it('includes renderReadiness in the puppeteer URL when provided', () => {
+    const payload: GeneratePayload = {
+      manifestLocation: '/apps/landing/fed-mods.json',
+      scope: 'landing',
+      module: './PdfEntry',
+      renderReadiness: 'explicit-v1',
+    };
+
+    const body = getPdfRequestBody(payload);
+    const url = new URL(body.url);
+
+    expect(url.searchParams.get('renderReadiness')).toBe('explicit-v1');
+    expect(body.renderReadiness).toBe('explicit-v1');
+  });
+
+  it('omits renderReadiness from the puppeteer URL when not provided', () => {
+    const payload: GeneratePayload = {
+      manifestLocation: '/apps/landing/fed-mods.json',
+      scope: 'landing',
+      module: './PdfEntry',
+    };
+
+    const body = getPdfRequestBody(payload);
+    const url = new URL(body.url);
+
+    expect(url.searchParams.has('renderReadiness')).toBe(false);
   });
 });

@@ -124,7 +124,7 @@ const defaultConfig: {
   pdfReadinessFallbackNetworkIdle:
     process.env.PDF_READINESS_FALLBACK_NETWORK_IDLE === 'true',
   pdfReadinessCapabilityDetectionMs: parseInt(
-    process.env.PDF_READINESS_CAPABILITY_DETECTION_MS || '500',
+    process.env.PDF_READINESS_CAPABILITY_DETECTION_MS || '2000',
     10,
   ),
   scalprum: {

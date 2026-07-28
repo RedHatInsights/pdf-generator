@@ -279,3 +279,53 @@ const PDFTemplate = ({ asyncData, additionalData }) => {
 export default PDFTemplate;
 
 ```
+## Explicit render readiness
+
+If your template performs multi-batch fetches with long gaps between requests, opt into the
+explicit readiness contract so generation does not finish on a premature network-idle signal.
+
+### Create payload
+
+```js
+{
+  manifestLocation: "/apps/landing/fed-mods.json",
+  scope: "landing",
+  module: "./PdfEntry",
+  renderReadiness: "explicit-v1",
+  fetchDataParams: { /* ... */ },
+}
+```
+
+### Signal ready from the template
+
+Call `onPdfReady` after your async work (including any in-template follow-up fetches) is done:
+
+```tsx
+const PDFTemplate = ({ asyncData, onPdfReady }) => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // ... finish rendering / secondary fetches ...
+      if (!cancelled) {
+        onPdfReady?.();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [asyncData, onPdfReady]);
+
+  return <div>{/* ... */}</div>;
+};
+```
+
+After `onPdfReady`, the generator bootstrap still waits for fonts, images, and two `requestAnimationFrame`
+ticks before setting `data-pdf-ready="true"`.
+
+### Capability detection window
+
+The service looks for `#root[data-pdf-readiness-contract="v1"]` for up to
+`PDF_READINESS_CAPABILITY_DETECTION_MS` (default 2000ms) after `domcontentloaded`. That attribute is
+set when the client bootstrap bundle evaluates. If the federated JS bundle takes longer than the
+detection window to load, readiness falls through (network-idle fallback only when
+`PDF_READINESS_FALLBACK_NETWORK_IDLE=true`). Tune the ClowdApp parameter if your assets are slow.

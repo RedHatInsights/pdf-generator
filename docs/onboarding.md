@@ -23,6 +23,22 @@ For further details please read the in-depth [PDF Template development](./pdf-te
 
 If you have an old template from the `v1` implementation, they are stored in an [older git reference and can be found here](https://github.com/RedHatInsights/pdf-generator/tree/636695be494f145f89f11264e6b7707f8077a443/src/templates).
 
+### Explicit render readiness (optional)
+
+Templates that fetch data in multiple batches with gaps longer than ~1s between requests can cause
+the default network-idle wait to resolve too early. Opt into the explicit readiness contract:
+
+1. Set `renderReadiness: 'explicit-v1'` on each create-payload entry.
+2. Call `onPdfReady` (passed as a prop to your module, or via `usePdfReady()` from the generator bootstrap) after your template's async work is finished.
+3. Bootstrap still waits for fonts, images, and two animation frames before setting `data-pdf-ready="true"`.
+
+**Capability detection:** after `domcontentloaded`, the generator waits up to
+`PDF_READINESS_CAPABILITY_DETECTION_MS` (default **2000ms**) for
+`#root[data-pdf-readiness-contract="v1"]`. Bootstrap sets that attribute as soon as the client
+bundle evaluates. If your federated bundle loads slower than the detection window, generation
+falls through without waiting for `data-pdf-ready` (network-idle fallback only when
+`PDF_READINESS_FALLBACK_NETWORK_IDLE=true`). Raise the ClowdApp param if needed.
+
 ### Test your setup locally
 
 Follow the [Local development setup](./local-development-setup.md) guide and ensure your PDF template is working. You should replace 

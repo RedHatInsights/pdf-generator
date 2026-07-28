@@ -21,6 +21,12 @@ import {
   IntegrationEndpointsMap,
 } from '../integration/endpoints';
 import { resolveInternalRouteKey } from '../common/integrationEndpoints';
+import {
+  createPdfReadyGate,
+  markPdfReady,
+  markReadinessContract,
+  runReadinessGates,
+} from './pdfReadiness';
 
 import 'react/jsx-runtime';
 
@@ -41,55 +47,7 @@ if (typeof state.additionalData === 'string') {
 }
 
 const isExplicitReadiness = state.renderReadiness === 'explicit-v1';
-const rootElement = document.getElementById('root');
-
-if (isExplicitReadiness && rootElement) {
-  rootElement.setAttribute('data-pdf-readiness-contract', 'v1');
-  rootElement.setAttribute('data-pdf-ready', 'false');
-}
-
-async function waitForFonts(timeoutMs = 10000): Promise<void> {
-  await Promise.race([
-    document.fonts.ready,
-    new Promise<void>((_, reject) =>
-      setTimeout(() => reject(new Error('Font loading timeout')), timeoutMs),
-    ),
-  ]).catch((err) => {
-    console.warn('[crc-pdf-generator] Font wait failed, proceeding:', err);
-  });
-}
-
-async function waitForImages(container: Element): Promise<void> {
-  const images = Array.from(container.querySelectorAll('img'));
-  const pending = images.filter((img) => !img.complete);
-  await Promise.all(
-    pending.map((img) =>
-      new Promise<void>((resolve) => {
-        const done = () => resolve();
-        img.addEventListener('load', done, { once: true });
-        img.addEventListener('error', done, { once: true });
-      }).then(async () => {
-        if (typeof img.decode === 'function') {
-          await img.decode().catch(() => {});
-        }
-      }),
-    ),
-  );
-}
-
-function waitForTwoRAFs(): Promise<void> {
-  return new Promise((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-  );
-}
-
-async function runReadinessGates(container: Element): Promise<void> {
-  (window as any).__fontTimestamp = Date.now();
-  await waitForFonts();
-  (window as any).__fontTimestamp = Date.now();
-  await waitForImages(container);
-  await waitForTwoRAFs();
-}
+markReadinessContract(document.getElementById('root'), state.renderReadiness);
 
 type PdfReadyContextType = {
   onPdfReady: () => void;
@@ -191,18 +149,16 @@ const MetadataWrapper = () => {
     data: null,
   });
 
-  const pdfReadyResolverRef = useRef<(() => void) | null>(null);
-  const pdfReadyPromiseRef = useRef<Promise<void> | null>(null);
+  const pdfReadyGateRef = useRef<ReturnType<typeof createPdfReadyGate> | null>(
+    null,
+  );
 
-  if (isExplicitReadiness && !pdfReadyPromiseRef.current) {
-    pdfReadyPromiseRef.current = new Promise<void>((resolve) => {
-      pdfReadyResolverRef.current = resolve;
-    });
+  if (isExplicitReadiness && !pdfReadyGateRef.current) {
+    pdfReadyGateRef.current = createPdfReadyGate();
   }
 
   const handlePdfReady = useCallback(() => {
-    (window as any).__callbackTimestamp = Date.now();
-    pdfReadyResolverRef.current?.();
+    pdfReadyGateRef.current?.resolve();
   }, []);
 
   async function getFetchMetadata() {
@@ -252,16 +208,15 @@ const MetadataWrapper = () => {
 
     let cancelled = false;
     (async () => {
-      if (pdfReadyPromiseRef.current) {
-        await pdfReadyPromiseRef.current;
+      if (pdfReadyGateRef.current) {
+        await pdfReadyGateRef.current.promise;
       }
       if (cancelled) return;
       const container = document.getElementById('root');
       if (container) {
         await runReadinessGates(container);
         if (!cancelled) {
-          (window as any).__readyTimestamp = Date.now();
-          container.setAttribute('data-pdf-ready', 'true');
+          markPdfReady(container);
         }
       }
     })();

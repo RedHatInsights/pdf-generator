@@ -48,12 +48,6 @@ export type PuppeteerBrowserRequest = Request<
   GeneratePayload
 >;
 
-export type AuthState = {
-  authHeader?: string;
-  refreshToken?: string;
-  authCookie?: string;
-};
-
 export type PdfRequestBody = GeneratePayload & {
   uuid: string;
   url: string;

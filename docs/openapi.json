@@ -348,6 +348,11 @@
             "type": "boolean",
             "default": false,
             "description": "is your pdf read like a novel or a powerpoint?"
+          },
+          "renderReadiness": {
+            "type": "string",
+            "enum": ["explicit-v1"],
+            "description": "Opt into the explicit PDF readiness contract. When set, the template must call onPdfReady after async work finishes; the generator waits for data-pdf-ready instead of network idle."
           }
         },
         "example": {
@@ -361,7 +366,8 @@
           "additionalData": {
             "customerStatus": "active"
           },
-          "landscape": true
+          "landscape": true,
+          "renderReadiness": "explicit-v1"
         }
       },
       "PdfDetails": {
