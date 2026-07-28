@@ -123,6 +123,35 @@ function initCollection(collectionId: string) {
   pdfCache.setExpectedLength(collectionId, 1);
 }
 
+type MockInterceptedRequest = {
+  url: () => string;
+  method: () => string;
+  headers: () => Record<string, string>;
+  continue: jest.Mock;
+  respond: jest.Mock;
+};
+
+function makeInterceptedRequest(url: string): MockInterceptedRequest {
+  return {
+    url: () => url,
+    method: () => 'GET',
+    headers: () => ({}),
+    continue: jest.fn(),
+    respond: jest.fn(),
+  };
+}
+
+async function getRequestInterceptorResult(url: string): Promise<jest.Mock> {
+  const handler = mockPage.on.mock.calls.find(
+    ([event]: [string]) => event === 'request',
+  )?.[1];
+  const req = makeInterceptedRequest(url);
+  if (handler) {
+    await handler(req);
+  }
+  return req.continue;
+}
+
 describe('generatePdf', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -164,15 +193,28 @@ describe('generatePdf', () => {
       expect(mockPage.close).toHaveBeenCalled();
     });
 
-    it('sets auth header from token manager', async () => {
+    it('forwards auth header to same-origin (localhost) requests', async () => {
       const tm = makeTokenManager('Bearer my-token');
       await generatePdf(makePdfRequest(), 'coll-1', 1, tm);
 
-      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith(
+      const continueMock = await getRequestInterceptorResult(
+        'http://localhost:8000/api/something',
+      );
+      expect(continueMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          'x-pdf-auth': 'Bearer my-token',
+          headers: expect.objectContaining({ 'x-pdf-auth': 'Bearer my-token' }),
         }),
       );
+    });
+
+    it('does not forward auth header to cross-origin requests', async () => {
+      const tm = makeTokenManager('Bearer my-token');
+      await generatePdf(makePdfRequest(), 'coll-1', 1, tm);
+
+      const continueMock = await getRequestInterceptorResult(
+        'https://cdn.example.com/script.js',
+      );
+      expect(continueMock).toHaveBeenCalledWith();
     });
   });
 
@@ -309,9 +351,14 @@ describe('generatePdf', () => {
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(tm.currentToken).toBe('Bearer refreshed-token');
-      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith(
+      const continueMock = await getRequestInterceptorResult(
+        'http://localhost:8000/api/something',
+      );
+      expect(continueMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          'x-pdf-auth': 'Bearer refreshed-token',
+          headers: expect.objectContaining({
+            'x-pdf-auth': 'Bearer refreshed-token',
+          }),
         }),
       );
     });
@@ -327,11 +374,12 @@ describe('generatePdf', () => {
       await generatePdf(makePdfRequest(), 'coll-no-refresh', 1, tm);
 
       expect(tm.currentToken).toBe(EXPIRING_TOKEN);
-      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith(
-        expect.not.objectContaining({
-          'x-pdf-auth': expect.anything(),
-        }),
+      const continueMock = await getRequestInterceptorResult(
+        'http://localhost:8000/api/something',
       );
+      // When auth header is absent, continue() is called without overrides
+      // (no extraHeaders means no localhost header injection either)
+      expect(continueMock).toHaveBeenCalledWith();
     });
 
     it('does not refresh when token is still fresh', async () => {
@@ -369,9 +417,10 @@ describe('generatePdf', () => {
       expect(UpdateStatus).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: PdfStatus.Generated }),
       );
-      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith(
-        expect.not.objectContaining({ 'x-pdf-auth': expect.anything() }),
+      const continueMock = await getRequestInterceptorResult(
+        'http://localhost:8000/api/something',
       );
+      expect(continueMock).toHaveBeenCalledWith();
     });
 
     it('propagates uploadPDF error to cluster for retry', async () => {
@@ -419,11 +468,19 @@ describe('generatePdf', () => {
 
       expect(tm.currentToken).toBe('Bearer new-shared-token');
 
+      // Isolate the subsequent task's request handler from the first call
+      jest.clearAllMocks();
+
       await generatePdf(makePdfRequest(), 'coll-shared-2', 2, tm);
 
-      expect(mockPage.setExtraHTTPHeaders).toHaveBeenLastCalledWith(
+      const continueMock = await getRequestInterceptorResult(
+        'http://localhost:8000/api/something',
+      );
+      expect(continueMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          'x-pdf-auth': 'Bearer new-shared-token',
+          headers: expect.objectContaining({
+            'x-pdf-auth': 'Bearer new-shared-token',
+          }),
         }),
       );
     });
