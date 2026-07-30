@@ -53,7 +53,8 @@ ENV NODE_ENV=production
 ENV DEBUG=puppeteer-cluster:*
 
 # Drop back to non-root user for runtime (OpenShift restricted-SCC compatible)
-RUN chown -R 1001:0 /pdf-gen && chmod -R g=u /pdf-gen
+RUN chown -R 1001:0 /pdf-gen && chmod -R g=u /pdf-gen && \
+    chmod -R g=u /opt/app-root/src/.cache/puppeteer
 USER 1001
 
 EXPOSE 8000
