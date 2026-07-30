@@ -88,7 +88,7 @@ function isValidManifestLocation(manifestLocation: string): boolean {
 }
 
 // module must be a relative webpack module specifier, e.g. "./App".
-const MODULE_RE = /^\.\/[A-Za-z0-9_/.-]+$/;
+const MODULE_RE = /^\.\/(?!.*\.\.)[\w/.-]+$/;
 
 // scope must be a valid npm package name or identifier.
 const SCOPE_RE = /^[A-Za-z0-9_@/-]+$/;

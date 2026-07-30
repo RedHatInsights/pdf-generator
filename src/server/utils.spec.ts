@@ -83,6 +83,22 @@ describe('validatePayload', () => {
       });
       expect(err?.field).toBe('manifestLocation');
     });
+
+    it('rejects protocol-relative URLs', () => {
+      const err = validatePayload({
+        ...valid,
+        manifestLocation: '//attacker.com/evil.json',
+      });
+      expect(err?.field).toBe('manifestLocation');
+    });
+
+    it('rejects backslash after leading slash', () => {
+      const err = validatePayload({
+        ...valid,
+        manifestLocation: '/\\attacker.com/evil.json',
+      });
+      expect(err?.field).toBe('manifestLocation');
+    });
   });
 
   describe('module', () => {
@@ -99,6 +115,11 @@ describe('validatePayload', () => {
 
     it('rejects path traversal', () => {
       const err = validatePayload({ ...valid, module: '../../../etc/passwd' });
+      expect(err?.field).toBe('module');
+    });
+
+    it('rejects path traversal with ./ prefix', () => {
+      const err = validatePayload({ ...valid, module: './../../etc/passwd' });
       expect(err?.field).toBe('module');
     });
 
@@ -122,5 +143,42 @@ describe('validatePayload', () => {
       const err = validatePayload({ ...valid, scope: '' });
       expect(err?.field).toBe('scope');
     });
+  });
+});
+
+describe('validatePayload rejects malformed payloads', () => {
+  it('rejects null', () => {
+    const err = validatePayload(null);
+    expect(err?.field).toBe('payload');
+  });
+
+  it('rejects undefined', () => {
+    const err = validatePayload(undefined);
+    expect(err?.field).toBe('payload');
+  });
+
+  it('rejects a scalar', () => {
+    const err = validatePayload(42);
+    expect(err?.field).toBe('payload');
+  });
+
+  it('rejects non-string manifestLocation', () => {
+    const err = validatePayload({
+      manifestLocation: 123,
+      module: './App',
+      scope: 'x',
+    });
+    expect(err?.field).toBe('manifestLocation');
+  });
+});
+
+describe('validatePayload covers /preview inputs', () => {
+  it('rejects attacker manifestLocation', () => {
+    const err = validatePayload({
+      manifestLocation: 'https://attacker.com/evil.json',
+      module: './App',
+      scope: 'fooApp',
+    });
+    expect(err?.field).toBe('manifestLocation');
   });
 });
