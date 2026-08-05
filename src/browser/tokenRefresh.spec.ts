@@ -1,8 +1,4 @@
-import {
-  isTokenExpiringSoon,
-  refreshAccessToken,
-  TokenManager,
-} from './tokenRefresh';
+import { refreshAccessToken, TokenManager } from './tokenRefresh';
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: 'RS256' })).toString(
@@ -27,35 +23,6 @@ jest.mock('../common/logging', () => ({
     warn: jest.fn(),
   },
 }));
-
-describe('isTokenExpiringSoon', () => {
-  it('returns true when token expires within 60 seconds', () => {
-    const exp = Math.floor(Date.now() / 1000) + 30;
-    expect(isTokenExpiringSoon(makeJwt({ exp }))).toBe(true);
-  });
-
-  it('returns true when token is already expired', () => {
-    const exp = Math.floor(Date.now() / 1000) - 100;
-    expect(isTokenExpiringSoon(makeJwt({ exp }))).toBe(true);
-  });
-
-  it('returns false when token has plenty of time left', () => {
-    const exp = Math.floor(Date.now() / 1000) + 600;
-    expect(isTokenExpiringSoon(makeJwt({ exp }))).toBe(false);
-  });
-
-  it('returns false for malformed token', () => {
-    expect(isTokenExpiringSoon('not-a-jwt')).toBe(false);
-  });
-
-  it('returns false for empty string', () => {
-    expect(isTokenExpiringSoon('')).toBe(false);
-  });
-
-  it('returns false when payload has no exp claim', () => {
-    expect(isTokenExpiringSoon(makeJwt({ sub: 'user' }))).toBe(false);
-  });
-});
 
 describe('refreshAccessToken', () => {
   const originalFetch = global.fetch;
@@ -274,5 +241,86 @@ describe('TokenManager', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(tm.currentToken).toBe(token);
+  });
+
+  it('updates cached expiry after token refresh', async () => {
+    const oldExp = Math.floor(Date.now() / 1000) + 10;
+    const oldToken = `Bearer ${makeJwt({ exp: oldExp })}`;
+    const newExp = Math.floor(Date.now() / 1000) + 600;
+    const newToken = makeJwt({ exp: newExp });
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ access_token: newToken }),
+    });
+
+    const tm = new TokenManager(oldToken, 'refresh-token');
+    const firstCall = await tm.getValidToken();
+
+    const secondCall = await tm.getValidToken();
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(firstCall).toContain(newToken);
+    expect(secondCall).toContain(newToken);
+  });
+
+  it('handles malformed tokens gracefully', async () => {
+    const tm = new TokenManager('Bearer malformed', 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe('Bearer malformed');
+  });
+
+  it('refreshes an already-expired token', async () => {
+    const exp = Math.floor(Date.now() / 1000) - 100;
+    const token = `Bearer ${makeJwt({ exp })}`;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ access_token: 'fresh-token' }),
+    });
+    const tm = new TokenManager(token, 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe('Bearer fresh-token');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh token without exp claim', async () => {
+    const token = `Bearer ${makeJwt({ sub: 'user', iss: 'test' })}`;
+    global.fetch = jest.fn();
+    const tm = new TokenManager(token, 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe(token);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh token with non-numeric exp claim', async () => {
+    const token = `Bearer ${makeJwt({ exp: 'not-a-number' })}`;
+    global.fetch = jest.fn();
+    const tm = new TokenManager(token, 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe(token);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh token with null exp claim', async () => {
+    const token = `Bearer ${makeJwt({ exp: null })}`;
+    global.fetch = jest.fn();
+    const tm = new TokenManager(token, 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe(token);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('treats empty auth header as no-auth (skips refresh)', async () => {
+    global.fetch = jest.fn();
+    const tm = new TokenManager('', 'refresh-token');
+
+    const result = await tm.getValidToken();
+    expect(result).toBe('');
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });
