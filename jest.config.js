@@ -1,7 +1,7 @@
 const { defaults: tsjPreset } = require('ts-jest/presets');
 
 module.exports = {
-  displayName: 'unit-test',
+  displayName: 'pdf-generator',
   preset: 'ts-jest/presets/js-with-ts',
   bail: 0,
   testTimeout: 30000,
