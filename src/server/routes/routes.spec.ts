@@ -1,4 +1,99 @@
+import express from 'express';
 import PdfCache, { PdfStatus, PDFComponent } from '../../common/pdfCache';
+
+const mockCreateProxyMiddleware = jest.fn((_options?: unknown) =>
+  jest.fn((_req: unknown, _res: unknown, next: (error?: unknown) => void) =>
+    next(),
+  ),
+);
+
+const mockConfig = {
+  webPort: 8000,
+  APIPrefix: '/api/crc-pdf-generator',
+  OPTIONS_HEADER_NAME: 'x-pdf-gen-options',
+  IDENTITY_HEADER_KEY: 'x-rh-identity',
+  IDENTITY_CONTEXT_KEY: 'identity',
+  AUTHORIZATION_CONTEXT_KEY: 'x-pdf-auth',
+  AUTHORIZATION_HEADER_KEY: 'Authorization',
+  REFRESH_TOKEN_CONTEXT_KEY: 'x-pdf-refresh-token',
+  JWT_COOKIE_NAME: 'cs_jwt',
+  scalprum: {
+    apiHost: 'blank' as string,
+    assetsHost: 'blank' as string,
+  },
+  IS_PRODUCTION: false,
+};
+
+jest.mock('http-proxy-middleware', () => ({
+  createProxyMiddleware: (options: unknown) =>
+    mockCreateProxyMiddleware(options),
+}));
+
+jest.mock('./createInternalProxies', () => ({
+  __esModule: true,
+  default: jest.fn(() => []),
+}));
+
+jest.mock('../../common/config', () => ({
+  __esModule: true,
+  default: mockConfig,
+}));
+
+jest.mock('../cluster', () => ({
+  cluster: {
+    idle: jest.fn().mockResolvedValue(undefined),
+    queue: jest.fn(),
+  },
+}));
+
+jest.mock('../../browser/clusterTask', () => ({
+  generatePdf: jest.fn(),
+}));
+
+jest.mock('../../browser/previewPDF', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+jest.mock('../render-template', () => ({
+  __esModule: true,
+  default: jest.fn(() => '<html></html>'),
+}));
+
+jest.mock('../../browser/tokenRefresh', () => ({
+  TokenManager: jest.fn().mockImplementation(() => ({
+    getToken: jest.fn(),
+  })),
+}));
+
+jest.mock('../../common/logging', () => ({
+  apiLogger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    warning: jest.fn(),
+  },
+  hpmLogger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    warning: jest.fn(),
+  },
+}));
+
+jest.mock('../../common/securityLog', () => ({
+  logSecurityEvent: jest.fn(),
+  getPrincipalFromContext: jest.fn(() => ({ type: 'anonymous' })),
+}));
+
+jest.mock('../../common/store', () => ({
+  store: {
+    downloadPDF: jest.fn(),
+    uploadPDF: jest.fn(),
+  },
+}));
 
 describe('Status endpoint error propagation', () => {
   const pdfCache = PdfCache.getInstance();
@@ -90,6 +185,56 @@ describe('Status endpoint error propagation', () => {
       // Entire collection should be marked as Failed
       expect(collection.status).toBe(PdfStatus.Failed);
       expect(collection.error).toBe('Network error fetching data');
+    });
+  });
+});
+
+describe('addProxy', () => {
+  const puppeteerQuery =
+    'manifestLocation=http%3A%2F%2Fexample.com%2Fmanifest.json&scope=test&module=./App';
+
+  beforeEach(() => {
+    mockCreateProxyMiddleware.mockClear();
+    mockConfig.scalprum.apiHost = 'blank';
+    mockConfig.scalprum.assetsHost = 'blank';
+    mockConfig.IS_PRODUCTION = false;
+  });
+
+  it('falls back apiHost and assetsHost to request origin when blank', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { sendTestRequest } =
+        await import('../../__test-utils__/createTestApp');
+      const router = (await import('./routes')).default;
+      const app = express();
+      app.use(router);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'pdf.example.com',
+      });
+
+      expect(mockConfig.scalprum.apiHost).toBe('https://pdf.example.com');
+      expect(mockConfig.scalprum.assetsHost).toBe('https://pdf.example.com');
+    });
+  });
+
+  it('only registers asset and api proxies once', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { sendTestRequest } =
+        await import('../../__test-utils__/createTestApp');
+      const router = (await import('./routes')).default;
+      const app = express();
+      app.use(router);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'pdf.example.com',
+      });
+      const callsAfterFirst = mockCreateProxyMiddleware.mock.calls.length;
+      expect(callsAfterFirst).toBe(2);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'pdf.example.com',
+      });
+      expect(mockCreateProxyMiddleware.mock.calls.length).toBe(callsAfterFirst);
     });
   });
 });
