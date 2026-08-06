@@ -14,15 +14,6 @@ export const sanitizeFilepath = (input: string) => {
   return input.replace(SANITIZE_FILEPATH, '');
 };
 
-export const MaxWorkers = 4;
-
-export const margins = {
-  top: '2cm',
-  bottom: '2cm',
-  right: '1cm',
-  left: '1cm',
-};
-
 function getChromiumExecutablePath() {
   const home = process.env.HOME || '/root';
   const paths = glob.sync(
@@ -54,45 +45,3 @@ export const setWindowProperty = (page: Page, name: string, value: string) =>
       }
     })
   `);
-
-type PdfStatus = {
-  [statusID: string]: {
-    status: string;
-    filepath: string;
-  };
-};
-
-type PdfEntry = {
-  status: string;
-  filepath: string;
-};
-
-class PdfCache {
-  private static instance: PdfCache;
-  private data: PdfStatus;
-
-  private constructor() {
-    this.data = {};
-  }
-
-  public static getInstance(): PdfCache {
-    if (!PdfCache.instance) {
-      PdfCache.instance = new PdfCache();
-    }
-    return PdfCache.instance;
-  }
-
-  public setItem(id: string, status: PdfEntry): void {
-    this.data[id] = { ...status };
-  }
-
-  public getItem(id: string): PdfEntry {
-    return this.data[id];
-  }
-
-  public deleteItem(id: string) {
-    delete this.data[id];
-  }
-}
-
-export default PdfCache;

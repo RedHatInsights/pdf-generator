@@ -357,7 +357,7 @@ class PdfCache {
     // Sort the pages for the correct finalized PDF order
     const sortedSlices = this.sortComponents(collection.components);
     apiLogger.debug(`Merging slices for collection ${collectionId}`);
-    const tmpdir = `/tmp/${collectionId}-components/*`;
+    const tmpdir = `/tmp/${collectionId}-components/`;
     ensureDirSync(tmpdir);
     try {
       const merger = new PDFMerger();
