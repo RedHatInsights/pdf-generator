@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM registry.access.redhat.com/ubi9/nodejs-22:1-1784594179@sha256:03972e440fc806d71a87982d7044616aa185b7bbe6c821642e9510c418e21a40 AS builder
+FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1785789721@sha256:f1c63a4a81316b97edb34f61340eb59229b72681bb2040a33296947b9676dc55 AS builder
 
 USER 0
 WORKDIR /pdf-gen
@@ -18,13 +18,13 @@ COPY . .
 
 # Download pinned Chrome, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npx @puppeteer/browsers install chrome@150.0.7871.125 --path /opt/app-root/src/.cache/puppeteer \
+RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/src/.cache/puppeteer \
  && node circular.js \
  && npm run build \
  && npm prune --omit=dev
 
 # Stage 2: Runtime
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:1-1784124526@sha256:e821984ab8265a8b8f46b01e9595a7633decc75813d34a9dce99cc42430af6ec
+FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1785373147@sha256:a8b67d7c6a96e0aa229ba0e3b84045db98ce640291da088874dc5d67352132d2
 
 USER 0
 WORKDIR /pdf-gen
@@ -34,8 +34,8 @@ WORKDIR /pdf-gen
 RUN microdnf install -y bzip2 fontconfig pango \
   libXcomposite libXcursor libXdamage \
   libXext libXi libXtst cups-libs \
-  libXScrnSaver libXrandr alsa-lib \
-  atk gtk3 libdrm libgbm libxshmfence \
+  libXrandr alsa-lib \
+  atk gtk3 libdrm mesa-libgbm libxshmfence \
   nss && microdnf clean all \
  && rm -rf /usr/lib/node_modules /usr/bin/npm /usr/bin/npx /usr/bin/nodemon
 
