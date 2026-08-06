@@ -426,4 +426,177 @@ describe('generatePdf', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('response handler', () => {
+    function getResponseHandler(): (response: unknown) => Promise<void> {
+      const calls = mockPage.on.mock.calls.filter(
+        ([event]: [string]) => event === 'response',
+      );
+      return calls[calls.length - 1][1] as (response: unknown) => Promise<void>;
+    }
+
+    it('logs error responses with status >= 400', async () => {
+      const { apiLogger } = jest.requireMock('../common/logging');
+      await generatePdf(
+        makePdfRequest(),
+        'coll-resp-err',
+        1,
+        makeTokenManager(),
+      );
+
+      const handler = getResponseHandler();
+      await handler({
+        status: () => 502,
+        url: () => 'https://example.com/api/data',
+        text: () => Promise.resolve('Bad Gateway'),
+        ok: () => false,
+        headers: () => ({}),
+      });
+
+      expect(apiLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('502'),
+      );
+      expect(apiLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Bad Gateway'),
+      );
+    });
+
+    it('logs <unreadable> when error response body cannot be read', async () => {
+      const { apiLogger } = jest.requireMock('../common/logging');
+      await generatePdf(
+        makePdfRequest(),
+        'coll-resp-unread',
+        1,
+        makeTokenManager(),
+      );
+
+      const handler = getResponseHandler();
+      await handler({
+        status: () => 500,
+        url: () => 'https://example.com/api/fail',
+        text: () => Promise.reject(new Error('body stream consumed')),
+        ok: () => false,
+        headers: () => ({}),
+      });
+
+      expect(apiLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('<unreadable>'),
+      );
+    });
+
+    it('caches successful JS/CSS asset responses', async () => {
+      await generatePdf(
+        makePdfRequest(),
+        'coll-resp-cache',
+        1,
+        makeTokenManager(),
+      );
+
+      const handler = getResponseHandler();
+      const assetBody = Buffer.from('console.log("cached")');
+      await handler({
+        status: () => 200,
+        url: () => 'https://example.com/apps/my-app/bundle.js?v=1',
+        ok: () => true,
+        buffer: () => Promise.resolve(assetBody),
+        headers: () => ({ 'content-type': 'application/javascript' }),
+      });
+
+      // Trigger a second request for the same asset via the request handler
+      const requestCalls = mockPage.on.mock.calls.filter(
+        ([event]: [string]) => event === 'request',
+      );
+      const requestHandler = requestCalls[requestCalls.length - 1][1];
+
+      const respondFn = jest.fn();
+      const continueFn = jest.fn();
+      await requestHandler({
+        method: () => 'GET',
+        url: () => 'https://example.com/apps/my-app/bundle.js?v=2',
+        respond: respondFn,
+        continue: continueFn,
+      });
+
+      expect(respondFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 200,
+          contentType: 'application/javascript',
+          body: assetBody,
+        }),
+      );
+      expect(continueFn).not.toHaveBeenCalled();
+    });
+
+    it('does not cache non-asset responses', async () => {
+      await generatePdf(
+        makePdfRequest(),
+        'coll-resp-no-cache',
+        1,
+        makeTokenManager(),
+      );
+
+      const handler = getResponseHandler();
+      await handler({
+        status: () => 200,
+        url: () => 'https://example.com/api/data',
+        ok: () => true,
+        buffer: () => Promise.resolve(Buffer.from('data')),
+        headers: () => ({ 'content-type': 'application/json' }),
+      });
+
+      // Non-asset URL should not be cached — request should continue normally
+      const requestCalls = mockPage.on.mock.calls.filter(
+        ([event]: [string]) => event === 'request',
+      );
+      const requestHandler = requestCalls[requestCalls.length - 1][1];
+
+      const respondFn = jest.fn();
+      const continueFn = jest.fn();
+      await requestHandler({
+        method: () => 'GET',
+        url: () => 'https://example.com/api/data',
+        respond: respondFn,
+        continue: continueFn,
+      });
+
+      expect(continueFn).toHaveBeenCalled();
+      expect(respondFn).not.toHaveBeenCalled();
+    });
+
+    it('does not cache error responses as assets', async () => {
+      await generatePdf(
+        makePdfRequest(),
+        'coll-resp-err-no-cache',
+        1,
+        makeTokenManager(),
+      );
+
+      const handler = getResponseHandler();
+      await handler({
+        status: () => 404,
+        url: () => 'https://example.com/apps/my-app/missing.js',
+        ok: () => false,
+        text: () => Promise.resolve('Not Found'),
+        headers: () => ({}),
+      });
+
+      // 404 asset should not be cached — request should continue normally
+      const requestCalls = mockPage.on.mock.calls.filter(
+        ([event]: [string]) => event === 'request',
+      );
+      const requestHandler = requestCalls[requestCalls.length - 1][1];
+
+      const respondFn = jest.fn();
+      const continueFn = jest.fn();
+      await requestHandler({
+        method: () => 'GET',
+        url: () => 'https://example.com/apps/my-app/missing.js',
+        respond: respondFn,
+        continue: continueFn,
+      });
+
+      expect(continueFn).toHaveBeenCalled();
+      expect(respondFn).not.toHaveBeenCalled();
+    });
+  });
 });

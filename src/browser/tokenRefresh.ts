@@ -6,15 +6,17 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 export type RefreshResult =
   { accessToken: string } | { error: 'permanent' | 'transient' } | null;
 
-export function isTokenExpiringSoon(token: string): boolean {
+function parseTokenExpiry(token: string): number | null {
   try {
     const payload = JSON.parse(
       Buffer.from(token.split('.')[1], 'base64').toString(),
     );
-    const expiresAt = payload.exp * 1000;
-    return Date.now() + TOKEN_EXPIRY_BUFFER_MS > expiresAt;
+    if (typeof payload.exp !== 'number' || !isFinite(payload.exp)) {
+      return null;
+    }
+    return payload.exp * 1000;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -65,17 +67,30 @@ export class TokenManager {
   private readonly _refreshToken: string | undefined;
   private refreshPromise: Promise<string | null> | null = null;
   private permanentlyFailed = false;
+  private tokenExpiresAt: number | null = null;
 
   constructor(authHeader?: string, refreshToken?: string) {
     this.token = authHeader;
     this._refreshToken = refreshToken;
+    if (authHeader) {
+      this.updateTokenExpiry(authHeader);
+    }
+  }
+
+  private updateTokenExpiry(token: string): void {
+    this.tokenExpiresAt = parseTokenExpiry(token.replace(/^Bearer\s+/i, ''));
+  }
+
+  private isTokenExpiringSoon(): boolean {
+    if (this.tokenExpiresAt === null) return false;
+    return Date.now() + TOKEN_EXPIRY_BUFFER_MS > this.tokenExpiresAt;
   }
 
   async getValidToken(): Promise<string | undefined> {
     if (!this.token || !this._refreshToken) {
       return this.token;
     }
-    if (!isTokenExpiringSoon(this.token.replace(/^Bearer\s+/i, ''))) {
+    if (!this.isTokenExpiringSoon()) {
       return this.token;
     }
     return this.coalesce();
@@ -94,6 +109,7 @@ export class TokenManager {
         .then((result) => {
           if (result && 'accessToken' in result) {
             this.token = result.accessToken;
+            this.updateTokenExpiry(result.accessToken);
           } else if (result && result.error === 'permanent') {
             this.permanentlyFailed = true;
             apiLogger.debug(
