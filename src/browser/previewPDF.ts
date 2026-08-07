@@ -6,6 +6,7 @@ import {
   setWindowProperty,
 } from './helpers';
 import config from '../common/config';
+import { getDevMockToken } from '../common/devMockToken';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import { apiLogger } from '../common/logging';
 
@@ -35,8 +36,9 @@ const previewPdf = async (url: string) => {
     );
     await page.setViewport({ width: pageWidth, height: pageHeight });
     const extraHeaders: Record<string, string> = {};
-    if (process.env.MOCK_TOKEN) {
-      extraHeaders['Authorization'] = process.env.MOCK_TOKEN;
+    const mockToken = getDevMockToken(!!config?.IS_PRODUCTION);
+    if (mockToken) {
+      extraHeaders['Authorization'] = mockToken;
     }
     await page.setCookie({ name: 'cs_jwt', value: 'bar', domain: 'localhost' });
     await page.setExtraHTTPHeaders(extraHeaders);
