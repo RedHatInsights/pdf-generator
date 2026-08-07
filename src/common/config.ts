@@ -170,7 +170,10 @@ function initializeConfig() {
             ),
           );
         } catch (error) {
-          console.log('Could not merge Clowder endpoints', error);
+          console.error(
+            '[crc-pdf-generator] Could not merge Clowder endpoints',
+            error,
+          );
         }
       }
       if (clowderConfig.kafka.brokers[0].cacert != undefined) {
@@ -180,7 +183,10 @@ function initializeConfig() {
             clowderConfig.kafka.brokers[0].cacert,
           );
         } catch (error) {
-          console.log(error);
+          console.error(
+            '[crc-pdf-generator] Failed to write Kafka CA cert',
+            error,
+          );
         }
       }
       config = {

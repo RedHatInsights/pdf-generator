@@ -58,8 +58,7 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 }
 
 // setup keep alive timeout
-server.keepAliveTimeout = 60 * 1000 + 1000; // 61 s
-server.keepAliveTimeout = 60 * 1000 + 2000; // 62 s
+server.keepAliveTimeout = 61 * 1000;
 
 // Global error handlers to prevent crashes from unhandled rejections
 process.on(
