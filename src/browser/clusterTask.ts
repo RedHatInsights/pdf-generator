@@ -12,8 +12,7 @@ import { cluster } from '../server/cluster';
 import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
-
-const BROWSER_TIMEOUT = 120_000;
+import { BROWSER_TIMEOUT } from '../common/constants';
 
 const assetCache = new Map<string, { body: Buffer; contentType: string }>();
 

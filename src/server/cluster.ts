@@ -1,6 +1,6 @@
 import { Cluster } from 'puppeteer-cluster';
 import config from '../common/config';
-const BROWSER_TIMEOUT = 120_000;
+import { BROWSER_TIMEOUT } from '../common/constants';
 import { CHROMIUM_PATH } from '../browser/helpers';
 import { apiLogger } from '../common/logging';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
