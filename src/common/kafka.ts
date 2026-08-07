@@ -94,7 +94,6 @@ const kafkaLogCreator =
     const message = `[${namespace}] ${log.message}`;
     switch (level) {
       case kafkaLogLevel.ERROR:
-      case kafkaLogLevel.NOTHING:
         apiLogger.error(message);
         break;
       case kafkaLogLevel.WARN:

@@ -24,7 +24,7 @@ jest.mock('../common/logging', () => ({
   apiLogger: {
     debug: jest.fn(),
     error: jest.fn(),
-    warn: jest.fn(),
+    warning: jest.fn(),
   },
 }));
 
@@ -240,7 +240,7 @@ describe('TokenManager', () => {
 
     const result = await tm.getValidToken();
     expect(result).toBe(token);
-    expect(apiLogger.warn).toHaveBeenCalledWith(
+    expect(apiLogger.warning).toHaveBeenCalledWith(
       '[token-refresh] Transient failure, proceeding with expiring token',
     );
   });
