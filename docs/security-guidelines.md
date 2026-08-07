@@ -38,4 +38,5 @@
 
 - Sensitive: `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MOCK_TOKEN`, Kafka SASL credentials.
 - Never read or log these values. Use `config.ts` abstractions.
-- `MOCK_TOKEN` is a fallback auth header used in development when no real token is available. It must never be set in production.
+- `MOCK_TOKEN` is a fallback auth header used in development when no real token is available. It must never be set in production. Code also ignores it when `IS_PRODUCTION` is true (`getDevMockToken`).
+- Production client and server builds use `hidden-source-map`. This retains `.map` files for stack traces but omits discoverable `sourceMappingURL` comments. The `blockSourceMaps` middleware returns 404 for any `*.map` request under static mounts.
