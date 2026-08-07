@@ -5,6 +5,8 @@ import {
 } from './objectStore.impl';
 import config from '../config';
 import { Readable } from 'stream';
+import fs from 'fs';
+import { apiLogger } from '../logging';
 
 describe('objectStore config', () => {
   it('should have tls and bucket configs', () => {
@@ -104,6 +106,48 @@ describe('computeRetryDelay', () => {
   it('handles zero base delay', () => {
     const delay = computeRetryDelay(0, 0);
     expect(delay).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('ObjectStore.uploadPDF', () => {
+  let objectStore: ObjectStore;
+  let mockSend: jest.Mock;
+  let debugSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    objectStore = new ObjectStore();
+    mockSend = jest.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (objectStore as any).s3 = { send: mockSend };
+    debugSpy = jest.spyOn(apiLogger, 'debug');
+  });
+
+  afterEach(() => {
+    debugSpy.mockRestore();
+  });
+
+  it('does not log S3 credentials (regression test for RHCLOUD-49239)', async () => {
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(true);
+    jest
+      .spyOn(fs.promises, 'readFile')
+      .mockResolvedValue(Buffer.from('fake-pdf-content'));
+    mockSend.mockResolvedValue({});
+
+    await objectStore.uploadPDF('test-id', '/tmp/test.pdf');
+
+    // Verify debug logs were called
+    expect(debugSpy).toHaveBeenCalled();
+
+    // Verify credentials never appear in any log call
+    const allLogCalls = debugSpy.mock.calls.flat().join(' ');
+    expect(allLogCalls).not.toContain(config.objectStore.buckets[0].accessKey);
+    expect(allLogCalls).not.toContain(config.objectStore.buckets[0].secretKey);
+
+    // Verify we DO log the bucket name (positive control)
+    expect(allLogCalls).toContain(config.objectStore.buckets[0].name);
   });
 });
 
