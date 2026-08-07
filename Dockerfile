@@ -1,40 +1,43 @@
 # Stage 1: Build
-FROM registry.access.redhat.com/ubi9/nodejs-22:9.8-1780375952@sha256:fa57578b663265db4360118e6aedb7f150b8162b81ef567e0a66b14b80ee3329 AS builder
+FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1785789721@sha256:f1c63a4a81316b97edb34f61340eb59229b72681bb2040a33296947b9676dc55 AS builder
 
 USER 0
 WORKDIR /pdf-gen
-COPY . .
-RUN mkdir -p bin
 
 # Install build tools for native npm modules (node-gyp)
-RUN dnf install -y python3 make gcc-c++ git && dnf clean all
+RUN mkdir -p bin \
+ && dnf install -y python3 make gcc-c++ git \
+ && dnf clean all
 
-# Install npm dependencies from lockfile (skip default Chrome download)
+# Install npm dependencies from lockfile — separate layer so code changes don't bust npm cache
+COPY package*.json ./
 RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
 
-# Download Chrome 149.0.7827.53 for PDF generation (patches CVEs in bundled 149.0.7827.22)
-RUN npx @puppeteer/browsers install chrome@149.0.7827.103 --path /opt/app-root/src/.cache/puppeteer
+# Copy source after dependency install
+COPY . .
 
-# Check for circular dependencies
-RUN node circular.js
-
-# Build the application
+# Download pinned Chrome, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npm run build
+RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/src/.cache/puppeteer \
+ && node circular.js \
+ && npm run build \
+ && npm prune --omit=dev
 
 # Stage 2: Runtime
-FROM registry.access.redhat.com/ubi9/nodejs-22-minimal:9.8-1779828907@sha256:75a2c4753c2475d715e31304ec1effef61770713e6e9fdafdcb80351dbdf3ba5
+FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1785373147@sha256:a8b67d7c6a96e0aa229ba0e3b84045db98ce640291da088874dc5d67352132d2
 
 USER 0
 WORKDIR /pdf-gen
 
-# Install Chrome runtime dependencies
+# Install Chrome runtime dependencies and strip base-image npm/nodemon
+# (not needed at runtime; their vulnerable transitive deps trigger grype)
 RUN microdnf install -y bzip2 fontconfig pango \
   libXcomposite libXcursor libXdamage \
   libXext libXi libXtst cups-libs \
-  libXScrnSaver libXrandr alsa-lib \
-  atk gtk3 libdrm libgbm libxshmfence \
-  nss && microdnf clean all
+  libXrandr alsa-lib \
+  atk gtk3 libdrm mesa-libgbm libxshmfence \
+  nss && microdnf clean all \
+ && rm -rf /usr/lib/node_modules /usr/bin/npm /usr/bin/npx /usr/bin/nodemon
 
 # Copy application artifacts from builder
 COPY --chown=1001:0 --from=builder /pdf-gen/dist ./dist
@@ -52,7 +55,7 @@ ENV XDG_CACHE_HOME="/tmp/.chromium"
 ENV NODE_ENV=production
 ENV DEBUG=puppeteer-cluster:*
 
-# Drop back to non-root user for runtime (OpenShift restricted-SCC compatible)
+# Drop to non-root user for runtime (OpenShift restricted-SCC compatible)
 RUN chown -R 1001:0 /pdf-gen && chmod -R g=u /pdf-gen && \
     chmod -R g=u /opt/app-root/src/.cache/puppeteer
 USER 1001
