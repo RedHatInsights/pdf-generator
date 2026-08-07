@@ -47,13 +47,16 @@ export const hpmLogger = winston.createLogger({
  * requestLogger is exclusively responsible for logging requests from express.
  */
 export const requestLogger = expressWinston.logger({
-  level: config?.LOG_LEVEL,
-  transports: [new winston.transports.Console()],
+  winstonInstance: winston.createLogger({
+    levels: logLevels,
+    level: config?.LOG_LEVEL,
+    transports: [new winston.transports.Console()],
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json(),
+    ),
+  }),
   requestWhitelist: ['url', 'method', 'httpVersion', 'originalUrl', 'query'],
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json(),
-  ),
   meta: false,
   msg: 'HTTP {{req.method}} {{res.statusCode}} {{req.url}}',
   skip: SendVerboseLogs
