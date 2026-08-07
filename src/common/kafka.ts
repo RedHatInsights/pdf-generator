@@ -115,8 +115,12 @@ const kafkaLoggingOptions = {
   logCreator: kafkaLogCreator,
 };
 
-const KafkaClient = () => {
-  const brokers = config?.kafka.brokers;
+const KafkaClient = (): Kafka | null => {
+  const brokers = config?.kafka?.brokers ?? [];
+  if (brokers.length === 0) {
+    apiLogger.debug('no brokers configured, Kafka disabled');
+    return null;
+  }
   const sasl = getKafkaSASL(brokers);
   const ssl = getKafkaSSL(brokers);
   if (ssl && sasl) {
@@ -142,6 +146,10 @@ const pdfCache = PdfCache.getInstance();
 const kafka = KafkaClient();
 
 export async function produceMessage(topic: string, message: unknown) {
+  if (!kafka) {
+    apiLogger.debug('Kafka disabled, skipping produce');
+    return;
+  }
   const producer = kafka.producer();
 
   await producer.connect();
@@ -154,6 +162,10 @@ export async function produceMessage(topic: string, message: unknown) {
 }
 
 export async function consumeMessages(topic: string) {
+  if (!kafka) {
+    apiLogger.debug('Kafka disabled, skipping consume');
+    return;
+  }
   const consumer = kafka.consumer({ groupId: `pdf-gen-${os.hostname()}` });
   await consumer.connect();
   // Don't read from the beginning. Messages from not-yet-expired objects on the topic

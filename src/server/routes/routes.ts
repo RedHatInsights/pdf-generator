@@ -220,7 +220,6 @@ router.get(`${config?.APIPrefix}/v1/hello`, (_req, res) => {
 router.post(
   `${config?.APIPrefix}/v2/create`,
   async (req: GenerateHandlerRequest, res) => {
-    addProxy();
     const collectionId = crypto.randomUUID();
     if (!req.body?.payload) {
       return res.status(400).json({

@@ -53,7 +53,7 @@ export function sanitizeRecord(
 // manifestLocation must be a relative path or an absolute URL from allowed origins.
 // Prevents javascript:, data:, and other dangerous URI schemes from being
 // loaded by the headless browser.
-const RELATIVE_MANIFEST_RE = /^\/[^\s<>"]*\.json$/;
+const RELATIVE_MANIFEST_RE = /^\/(?![/\\])[^\s<>"\\]*\.json$/;
 
 const defaultManifestOrigins = [
   'console.redhat.com',
@@ -95,14 +95,24 @@ const SCOPE_RE = /^[A-Za-z0-9_@/-]+$/;
 
 export type PayloadValidationError = { field: string; message: string };
 
-export function validatePayload(payload: {
-  manifestLocation: string;
-  module: string;
-  scope: string;
-}): PayloadValidationError | null {
+export function validatePayload(
+  payload: unknown,
+): PayloadValidationError | null {
   if (
-    !payload.manifestLocation ||
-    !isValidManifestLocation(payload.manifestLocation)
+    payload === null ||
+    payload === undefined ||
+    typeof payload !== 'object'
+  ) {
+    return {
+      field: 'payload',
+      message: 'payload must be a non-null object',
+    };
+  }
+  const p = payload as Record<string, unknown>;
+  if (
+    typeof p.manifestLocation !== 'string' ||
+    !p.manifestLocation ||
+    !isValidManifestLocation(p.manifestLocation)
   ) {
     return {
       field: 'manifestLocation',
@@ -110,13 +120,13 @@ export function validatePayload(payload: {
         'manifestLocation must be a relative JSON path or an absolute https:// URL from allowed origins',
     };
   }
-  if (!payload.module || !MODULE_RE.test(payload.module)) {
+  if (typeof p.module !== 'string' || !p.module || !MODULE_RE.test(p.module)) {
     return {
       field: 'module',
       message: 'module must be a relative module path (e.g. "./App")',
     };
   }
-  if (!payload.scope || !SCOPE_RE.test(payload.scope)) {
+  if (typeof p.scope !== 'string' || !p.scope || !SCOPE_RE.test(p.scope)) {
     return {
       field: 'scope',
       message: 'scope must be an alphanumeric identifier',
