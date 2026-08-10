@@ -91,7 +91,9 @@ const mapSyslogLevelToKafkaLogLevel = (syslogLevel: string): kafkaLogLevel => {
 const kafkaLogCreator =
   () =>
   ({ namespace, level, log }: LogEntry) => {
-    const message = `[${namespace}] ${log.message}`;
+    const { message: msg, timestamp, ...rest } = log;
+    const extras = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
+    const message = `[${namespace}] ${msg}${extras}`;
     switch (level) {
       case kafkaLogLevel.ERROR:
         apiLogger.error(message);
