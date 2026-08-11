@@ -290,6 +290,9 @@ class PdfCache {
         apiLogger.error(
           `Failed to merge collection ${collectionId}: ${message}`,
         );
+        if (this.data[collectionId]) {
+          this.data[collectionId].merging = false;
+        }
         this.invalidateCollection(collectionId, message);
       }
     }
