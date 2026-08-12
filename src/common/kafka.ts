@@ -1,4 +1,9 @@
-import { Kafka, SASLOptions } from 'kafkajs';
+import {
+  Kafka,
+  SASLOptions,
+  logLevel as kafkaLogLevel,
+  type LogEntry,
+} from 'kafkajs';
 import config from '../common/config';
 import { apiLogger } from './logging';
 import PdfCache, { PDFComponent } from './pdfCache';
@@ -64,6 +69,52 @@ export const getKafkaSASL = (brokers: KafkaBroker[]) => {
   return undefined;
 };
 
+const mapSyslogLevelToKafkaLogLevel = (syslogLevel: string): kafkaLogLevel => {
+  switch (syslogLevel) {
+    case 'emerg':
+    case 'alert':
+    case 'crit':
+    case 'error':
+      return kafkaLogLevel.ERROR;
+    case 'warning':
+    case 'notice':
+      return kafkaLogLevel.WARN;
+    case 'info':
+      return kafkaLogLevel.INFO;
+    case 'debug':
+      return kafkaLogLevel.DEBUG;
+    default:
+      return kafkaLogLevel.INFO;
+  }
+};
+
+const kafkaLogCreator =
+  () =>
+  ({ namespace, level, log }: LogEntry) => {
+    const { message: msg, timestamp, ...rest } = log;
+    const extras = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
+    const message = `[${namespace}] ${msg}${extras}`;
+    switch (level) {
+      case kafkaLogLevel.ERROR:
+        apiLogger.error(message);
+        break;
+      case kafkaLogLevel.WARN:
+        apiLogger.warning(message);
+        break;
+      case kafkaLogLevel.INFO:
+        apiLogger.info(message);
+        break;
+      case kafkaLogLevel.DEBUG:
+        apiLogger.debug(message);
+        break;
+    }
+  };
+
+const kafkaLoggingOptions = {
+  logLevel: mapSyslogLevelToKafkaLogLevel(config?.LOG_LEVEL ?? 'info'),
+  logCreator: kafkaLogCreator,
+};
+
 const KafkaClient = () => {
   const brokers = config?.kafka.brokers;
   const sasl = getKafkaSASL(brokers);
@@ -75,6 +126,7 @@ const KafkaClient = () => {
       brokers: kafkaSocketAddresses(brokers),
       ssl: ssl,
       sasl: sasl,
+      ...kafkaLoggingOptions,
     });
   }
   apiLogger.debug('no ssl');
@@ -82,6 +134,7 @@ const KafkaClient = () => {
     clientId: 'crc-pdf-gen',
     brokers: kafkaSocketAddresses(brokers),
     ssl: false,
+    ...kafkaLoggingOptions,
   });
 };
 
