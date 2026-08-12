@@ -1,6 +1,6 @@
 import config from './config';
 import { getKafkaSASL, getKafkaSSL } from './kafka';
-import { SASLOptions } from 'kafkajs';
+import { SASLOptions, logLevel } from 'kafkajs';
 
 describe('stage config', () => {
   it('should have ssl and ca configs', () => {
@@ -35,6 +35,7 @@ describe('produceMessage', () => {
     mockDisconnect.mockClear();
     // jest.doMock is the runtime API; jest.mock at this scope would not be hoisted
     jest.doMock('kafkajs', () => ({
+      logLevel,
       Kafka: jest.fn().mockImplementation(() => ({
         producer: jest.fn().mockReturnValue(mockProducer),
       })),
