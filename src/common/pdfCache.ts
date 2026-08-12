@@ -1,5 +1,4 @@
 import { apiLogger } from './logging';
-import { ensureDirSync } from 'fs-extra';
 import PDFMerger from 'pdf-merger-js';
 import { store } from '../common/store';
 import os from 'os';
@@ -283,19 +282,19 @@ class PdfCache {
       }
       this.data[collectionId].merging = true;
 
-      // Fire-and-forget: merge in background without blocking
-      this.mergePDFsFromCompleteCollection(collectionId)
-        .then(() => {
-          if (this.data[collectionId]) {
-            this.updateCollectionState(collectionId, PdfStatus.Generated);
-          }
-        })
-        .catch((error) => {
-          apiLogger.error(`Merge failed for ${collectionId}: ${error}`);
-          if (this.data[collectionId]) {
-            this.data[collectionId].merging = false;
-          }
-        });
+      try {
+        await this.mergePDFsFromCompleteCollection(collectionId);
+        this.updateCollectionState(collectionId, PdfStatus.Generated);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        apiLogger.error(
+          `Failed to merge collection ${collectionId}: ${message}`,
+        );
+        if (this.data[collectionId]) {
+          this.data[collectionId].merging = false;
+        }
+        this.invalidateCollection(collectionId, message);
+      }
     }
   }
 
@@ -357,32 +356,25 @@ class PdfCache {
     // Sort the pages for the correct finalized PDF order
     const sortedSlices = this.sortComponents(collection.components);
     apiLogger.debug(`Merging slices for collection ${collectionId}`);
-    const tmpdir = `/tmp/${collectionId}-components/`;
-    ensureDirSync(tmpdir);
-    try {
-      const merger = new PDFMerger();
-      // Since we can merge the PDFs without saving them to disk, we
-      // can sequentially grab all the s3 stored PDFs as a UINT8 array
-      // and merge them in memory much faster than writing to disk
-      for (const component of sortedSlices) {
-        const pdfReadable = await store.downloadPDF(component.componentId);
-        if (!pdfReadable) {
-          throw new Error(
-            `Failed to download PDF for ${component.componentId}`,
-          );
-        }
-        const pdfBuffer = await ArrayBuffer(pdfReadable);
-        await merger.add(pdfBuffer);
+    const merger = new PDFMerger();
+    for (const component of sortedSlices) {
+      const pdfReadable = await store.downloadPDF(component.componentId);
+      if (!pdfReadable) {
+        throw new Error(`Failed to download PDF for ${component.componentId}`);
       }
-      const buffer = await merger.saveAsBuffer();
-      const completed = await addPageNumbers(new Uint8Array(buffer));
-      const path = `${os.tmpdir()}/${collectionId}`;
-      fs.writeFileSync(path, completed);
+      const pdfBuffer = await ArrayBuffer(pdfReadable);
+      await merger.add(pdfBuffer);
+    }
+    const buffer = await merger.saveAsBuffer();
+    const completed = await addPageNumbers(new Uint8Array(buffer));
+    const path = `${os.tmpdir()}/${collectionId}`;
+    try {
+      await fs.promises.writeFile(path, completed);
       apiLogger.debug(`${path} written to disk`);
       await store.uploadPDF(collectionId, path);
       apiLogger.debug(`${collectionId} written to s3`);
-    } catch (error) {
-      apiLogger.debug(`Error merging files: ${error}`);
+    } finally {
+      fs.rmSync(path, { force: true });
     }
   };
 }

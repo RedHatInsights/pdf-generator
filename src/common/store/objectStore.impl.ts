@@ -186,21 +186,17 @@ export class ObjectStore implements PDFStorageService {
     const bucket = config?.objectStore.buckets[0].name;
     const exists = await this.checkBucketExists(bucket);
     if (!exists) {
-      apiLogger.debug(`Error downloading file: No such bucket ${bucket}`);
+      throw new Error(`No such bucket ${bucket}`);
     }
-    try {
-      const downloadParams = {
-        Bucket: bucket,
-        Key: `${id}.pdf`,
-      };
-      const response = await this.s3.send(new GetObjectCommand(downloadParams));
-      if (!response.Body) {
-        return;
-      }
-      return response.Body as Readable;
-    } catch (error) {
-      apiLogger.debug(`Error downloading file: ${error}`);
+    const downloadParams = {
+      Bucket: bucket,
+      Key: `${id}.pdf`,
+    };
+    const response = await this.s3.send(new GetObjectCommand(downloadParams));
+    if (!response.Body) {
+      return;
     }
+    return response.Body as Readable;
   }
 
   private checkBucketExists = async (bucket: string) => {

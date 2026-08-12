@@ -1,5 +1,10 @@
-import { isTransientS3Error, computeRetryDelay } from './objectStore.impl';
+import {
+  isTransientS3Error,
+  computeRetryDelay,
+  ObjectStore,
+} from './objectStore.impl';
 import config from '../config';
+import { Readable } from 'stream';
 
 describe('objectStore config', () => {
   it('should have tls and bucket configs', () => {
@@ -99,5 +104,64 @@ describe('computeRetryDelay', () => {
   it('handles zero base delay', () => {
     const delay = computeRetryDelay(0, 0);
     expect(delay).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('ObjectStore.downloadPDF', () => {
+  let objectStore: ObjectStore;
+  let mockSend: jest.Mock;
+
+  beforeEach(() => {
+    objectStore = new ObjectStore();
+    mockSend = jest.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (objectStore as any).s3 = { send: mockSend };
+  });
+
+  it('throws when bucket does not exist', async () => {
+    mockSend.mockResolvedValueOnce(undefined);
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(false);
+
+    await expect(objectStore.downloadPDF('test-id')).rejects.toThrow(
+      /No such bucket/,
+    );
+  });
+
+  it('rethrows S3 errors', async () => {
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(true);
+    mockSend.mockRejectedValue(new Error('S3 GetObject failed'));
+
+    await expect(objectStore.downloadPDF('test-id')).rejects.toThrow(
+      'S3 GetObject failed',
+    );
+  });
+
+  it('returns undefined when response has no Body', async () => {
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(true);
+    mockSend.mockResolvedValue({ Body: undefined });
+
+    const result = await objectStore.downloadPDF('test-id');
+    expect(result).toBeUndefined();
+  });
+
+  it('returns Readable when response has Body', async () => {
+    const mockBody = new Readable({ read() {} });
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(true);
+    mockSend.mockResolvedValue({ Body: mockBody });
+
+    const result = await objectStore.downloadPDF('test-id');
+    expect(result).toBe(mockBody);
   });
 });

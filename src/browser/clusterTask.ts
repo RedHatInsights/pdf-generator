@@ -235,9 +235,7 @@ async function runPageTask(
           footerTemplate,
           timeout: BROWSER_TIMEOUT,
         });
-        await store.uploadPDF(componentId, pdfPath).catch((error: unknown) => {
-          apiLogger.error(`Failed to upload PDF: ${error}`);
-        });
+        await store.uploadPDF(componentId, pdfPath);
         const pdfDoc = await PDFDocument.load(buffer);
         const numPages = pdfDoc.getPages().length;
         apiLogger.debug(`Generated PDF with ${numPages} pages`);

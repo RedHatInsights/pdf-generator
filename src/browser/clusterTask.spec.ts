@@ -374,6 +374,60 @@ describe('generatePdf', () => {
       );
     });
 
+    it('propagates uploadPDF error to cluster for retry', async () => {
+      const { store } = jest.requireMock('../common/store');
+      store.uploadPDF.mockRejectedValueOnce(
+        new Error('S3 upload failed after 4 attempts'),
+      );
+      initCollection('coll-upload-fail');
+
+      await expect(
+        generatePdf(
+          makePdfRequest(),
+          'coll-upload-fail',
+          1,
+          makeTokenManager(),
+        ),
+      ).rejects.toThrow('S3 upload failed');
+    });
+
+    it('closes the page after upload failure', async () => {
+      const { store } = jest.requireMock('../common/store');
+      store.uploadPDF.mockRejectedValueOnce(new Error('upload error'));
+      initCollection('coll-upload-close');
+
+      await expect(
+        generatePdf(
+          makePdfRequest(),
+          'coll-upload-close',
+          1,
+          makeTokenManager(),
+        ),
+      ).rejects.toThrow();
+
+      expect(mockPage.close).toHaveBeenCalled();
+    });
+
+    it('updates shared token manager so subsequent tasks see refreshed token', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ access_token: 'new-shared-token' }),
+      });
+      const tm = makeTokenManager(EXPIRING_TOKEN);
+
+      await generatePdf(makePdfRequest(), 'coll-shared-1', 1, tm);
+
+      expect(tm.currentToken).toBe('Bearer new-shared-token');
+
+      await generatePdf(makePdfRequest(), 'coll-shared-2', 2, tm);
+
+      expect(mockPage.setExtraHTTPHeaders).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          'x-pdf-auth': 'Bearer new-shared-token',
+        }),
+      );
+    });
+
     it('coalesces concurrent refreshes into a single SSO call', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
