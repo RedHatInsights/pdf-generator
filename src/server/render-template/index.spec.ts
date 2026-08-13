@@ -13,8 +13,14 @@ let getHeaderAndFooterTemplates: typeof import('./index').getHeaderAndFooterTemp
 
 describe('getHeaderAndFooterTemplates', () => {
   beforeEach(() => {
-    // Re-import to get fresh module state
     jest.resetModules();
+    jest.doMock('../../common/config', () => ({
+      __esModule: true,
+      default: {
+        endpoints: {},
+        IS_PRODUCTION: false,
+      },
+    }));
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('./index');
     getHeaderAndFooterTemplates = mod.getHeaderAndFooterTemplates;

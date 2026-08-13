@@ -123,7 +123,21 @@ async function runPageTask(
               return;
             }
           }
-          await interceptedRequest.continue();
+          // Auth headers are forwarded only to same-origin (localhost) requests
+          // to prevent credential exfiltration via cross-origin requests.
+          let isSameOrigin = false;
+          try {
+            isSameOrigin = new URL(reqUrl).hostname === 'localhost';
+          } catch {
+            // unparseable URL — treat as cross-origin
+          }
+          if (isSameOrigin && Object.keys(extraHeaders).length > 0) {
+            await interceptedRequest.continue({
+              headers: { ...interceptedRequest.headers(), ...extraHeaders },
+            });
+          } else {
+            await interceptedRequest.continue();
+          }
         });
 
         page.on('response', async (response) => {
@@ -163,8 +177,6 @@ async function runPageTask(
             }
           }
         });
-
-        await page.setExtraHTTPHeaders(extraHeaders);
 
         const pageResponse = await page.goto(url, {
           waitUntil: 'networkidle2',
