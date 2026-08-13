@@ -1,36 +1,36 @@
-export class PDFNotImplementedError {
+export class PDFNotImplementedError extends Error {
   code: number;
-  message: string;
   constructor() {
+    super('PDF layout is not implemented for this report yet');
     this.code = 404;
-    this.message = 'PDF layout is not implemented for this report yet';
+    this.name = 'PDFNotImplementedError';
   }
 }
 
-export class PDFNotFoundError {
+export class PDFNotFoundError extends Error {
   code: number;
-  message: string;
   constructor(pdfFileName: string) {
+    super(`${pdfFileName} does not exist on the server.`);
     this.code = 500;
-    this.message = `${pdfFileName} does not exist on the server.`;
+    this.name = 'PDFNotFoundError';
   }
 }
 
-export class SendingFailedError {
+export class SendingFailedError extends Error {
   code: number;
-  message: string;
   constructor(pdfFileName: string, error: Error | string) {
+    super(`Sending of ${pdfFileName} failed: ${error}`);
     this.code = 500;
-    this.message = `Sending of ${pdfFileName} failed: ${error}`;
+    this.name = 'SendingFailedError';
   }
 }
 
-export class PDFRequestError {
+export class PDFRequestError extends Error {
   code: number;
-  message: string;
   constructor(error: Error | string) {
+    super(`Error fetching data: ${error}`);
     this.code = 500;
-    this.message = `Error fetching data: ${error}`;
+    this.name = 'PDFRequestError';
   }
 }
 
@@ -42,7 +42,7 @@ export class PdfGenerationError extends Error {
     super(message);
     this.collectionId = collectionId;
     this.componentId = componentId;
-    this.name = this.constructor.name;
+    this.name = 'PdfGenerationError';
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, this.constructor); // Capture the stack trace
     } else {
