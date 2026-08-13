@@ -145,20 +145,74 @@ const KafkaClient = (): Kafka | null => {
 const pdfCache = PdfCache.getInstance();
 const kafka = KafkaClient();
 
+const producer = kafka?.producer() ?? null;
+let connected: Promise<void> | null = null;
+let shuttingDown = false;
+const inflightSends = new Set<Promise<unknown>>();
+
+function ensureConnected() {
+  if (!producer) {
+    return Promise.resolve();
+  }
+  if (!connected) {
+    connected = producer.connect().catch((err) => {
+      connected = null;
+      throw err;
+    });
+  }
+  return connected;
+}
+
+const DISCONNECT_TIMEOUT_MS = 5_000;
+
+export async function disconnectProducer() {
+  shuttingDown = true;
+  if (!producer) {
+    return;
+  }
+  if (connected) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<void>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error('Kafka connect timed out during shutdown')),
+        DISCONNECT_TIMEOUT_MS,
+      );
+    });
+    try {
+      await Promise.race([connected, timeout]);
+    } catch {
+      // timeout or connect failure — proceed with disconnect
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+    connected = null;
+  }
+  await Promise.allSettled([...inflightSends]);
+  await producer.disconnect();
+}
+
 export async function produceMessage(topic: string, message: unknown) {
-  if (!kafka) {
+  if (!kafka || !producer) {
     apiLogger.debug('Kafka disabled, skipping produce');
     return;
   }
-  const producer = kafka.producer();
-
-  await producer.connect();
-  await producer.send({
+  if (shuttingDown) {
+    throw new Error('Kafka producer is shutting down');
+  }
+  await ensureConnected();
+  if (shuttingDown) {
+    throw new Error('Kafka producer is shutting down');
+  }
+  const send = producer.send({
     topic: topic,
     messages: [{ value: JSON.stringify(message) }],
   });
-
-  await producer.disconnect();
+  inflightSends.add(send);
+  try {
+    await send;
+  } finally {
+    inflightSends.delete(send);
+  }
 }
 
 export async function consumeMessages(topic: string) {

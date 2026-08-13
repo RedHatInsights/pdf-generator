@@ -52,8 +52,10 @@ server.listen(PORT, () => {
 
 // Graceful shutdown logging (EOI-5)
 for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-  process.on(signal, () => {
+  process.on(signal, async () => {
     logShutdown(signal);
+    const { disconnectProducer } = await import('../common/kafka');
+    await disconnectProducer().catch(() => {});
   });
 }
 
