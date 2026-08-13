@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import Header from './Header';
 import Footer from './Footer';
 import instanceConfig from '../../common/config';
+import { safeJsonStringify } from '../utils';
 
 let cachedTemplates: {
   headerTemplate: string;
@@ -62,12 +63,8 @@ function renderTemplate(payload: GeneratePayload) {
 
   const template = baseTemplate.replace(
     '<script id="initial-state"></script>',
-    `<script id="initial-state">window.__initialState__ = ${JSON.stringify(
-      payload,
-      null,
-      2,
-    )};
-window.__endpoints__ = ${JSON.stringify(endpointKeys, null, 2)}
+    `<script id="initial-state">window.__initialState__ = ${safeJsonStringify(payload)};
+window.__endpoints__ = ${safeJsonStringify(endpointKeys)}
 window.IS_PRODUCTION = ${instanceConfig.IS_PRODUCTION}</script>`,
   );
 

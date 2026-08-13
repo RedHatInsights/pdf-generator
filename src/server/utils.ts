@@ -39,7 +39,6 @@ export function sanitizeString(value: unknown): unknown {
   return value;
 }
 
-// Function to sanitize a Record<string, unknown>
 export function sanitizeRecord(
   record: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -48,6 +47,26 @@ export function sanitizeRecord(
     sanitizedRecord[key] = sanitizeString(record[key]);
   });
   return sanitizedRecord;
+}
+
+const LINE_SEPARATOR_RE = new RegExp('\u2028', 'g');
+const PARAGRAPH_SEPARATOR_RE = new RegExp('\u2029', 'g');
+
+export function safeJsonStringify(obj: unknown): string {
+  return JSON.stringify(obj, null, 2)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(LINE_SEPARATOR_RE, '\\u2028')
+    .replace(PARAGRAPH_SEPARATOR_RE, '\\u2029');
+}
+
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // manifestLocation must be a relative path or an absolute URL from allowed origins.

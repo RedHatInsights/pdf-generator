@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'dotenv/config';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -7,7 +6,12 @@ import { Router, Request } from 'express';
 import httpContext from 'express-http-context';
 import renderTemplate from '../render-template';
 import config from '../../common/config';
-import { MANIFEST_ALLOWED_ORIGINS, validatePayload } from '../utils';
+import {
+  MANIFEST_ALLOWED_ORIGINS,
+  validatePayload,
+  escapeHtml,
+  safeJsonStringify,
+} from '../utils';
 import previewPdf from '../../browser/previewPDF';
 import {
   GenerateHandlerRequest,
@@ -26,7 +30,6 @@ import { store } from '../../common/store';
 import { generatePdf } from '../../browser/clusterTask';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import createInternalProxies from './createInternalProxies';
-import instanceConfig from '../../common/config';
 
 const router = Router();
 const pdfCache = PdfCache.getInstance();
@@ -69,9 +72,7 @@ function addProxy() {
           proxyReq.setHeader('Origin', config.scalprum.assetsHost);
           proxyReq.setHeader('Host', strippedHost);
           proxyReq.setHeader('Access-Control-Request-Method', 'GET');
-          proxyReq.setHeader('referer', 'content-type');
           proxyReq.setHeader('x-forwarded-host', config.scalprum.assetsHost);
-          // set AUTH header for gateway
           proxyReq.removeHeader(config.AUTHORIZATION_CONTEXT_KEY);
         },
       },
@@ -79,7 +80,7 @@ function addProxy() {
     });
     router.use(assetsProxy);
 
-    if (!instanceConfig.IS_PRODUCTION) {
+    if (!config.IS_PRODUCTION) {
       const apiProxy = createProxyMiddleware({
         target: config.scalprum.apiHost,
         secure: false,
@@ -103,7 +104,6 @@ function addProxy() {
             );
             proxyReq.setHeader('Origin', config.scalprum.apiHost);
             proxyReq.setHeader('Host', strippedHost);
-            proxyReq.setHeader('referer', 'content-type');
             proxyReq.setHeader('x-forwarded-host', config.scalprum.apiHost);
 
             if (authHeader) {
@@ -202,12 +202,11 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
     res.send(HTMLTemplate);
   } catch (error) {
     // render error to DOM to retrieve the error content from puppeteer
-    const errorString =
-      error instanceof Error ? error.message : JSON.stringify(error);
+    const errorString = error instanceof Error ? error.message : String(error);
     apiLogger.error(`Template rendering error: ${errorString}`);
     res.send(
-      `<div id="report-error" data-error="${JSON.stringify(errorString)}">${errorString}</div>` +
-        `<script>console.error('[crc-pdf-generator] Template rendering error:', ${JSON.stringify(errorString)});</script>`,
+      `<div id="report-error" data-error="${escapeHtml(errorString)}">${escapeHtml(errorString)}</div>` +
+        `<script>console.error('[crc-pdf-generator] Template rendering error:', ${safeJsonStringify(errorString)});</script>`,
     );
   }
 });
@@ -290,8 +289,9 @@ router.post(
     } catch (error: unknown) {
       // Only return a 500 error. 400's will be served by the status endpoint.
       // We cannot validate a payload's parameters until the browser is running
-      apiLogger.error(`Internal Server error: ${JSON.stringify(error)}`);
-      pdfCache.invalidateCollection(collectionId, JSON.stringify(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      apiLogger.error(`Internal Server error: ${errorMsg}`);
+      pdfCache.invalidateCollection(collectionId, errorMsg);
       logSecurityEvent(
         {
           action: 'CREATE',
@@ -300,13 +300,13 @@ router.post(
           outcome: 'failure',
           principal: getPrincipalFromContext(),
         },
-        `Internal server error: ${JSON.stringify(error)}`,
+        `Internal server error: ${errorMsg}`,
       );
       res.status(500).send({
         error: {
           status: 500,
           statusText: 'Internal server error',
-          description: `${JSON.stringify(error)}`,
+          description: errorMsg,
         },
       });
     }

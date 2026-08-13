@@ -259,7 +259,9 @@ export async function consumeMessages(topic: string) {
           expectedLength: updateMessage.expectedLength,
         });
       } catch (error) {
-        apiLogger.debug(`Message sync error: ${JSON.stringify(error)}`);
+        apiLogger.debug(
+          `Message sync error: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     },
   });
