@@ -38,6 +38,33 @@ cannot know how metadata and pagination works for each tenant API so it has expo
 your API's specific implementation. Any API response with greater than 500 objects must be paginated. The browser cannot populate a Patternfly table with
 thousands of objects. The default limit for most APIs is around 50-100. You can think of this step as pagination for the `crc-pdf-generator` api.
 
+### Payload validation rules
+
+The `v2/create` and `/preview` endpoints validate the `manifestLocation`, `module`, and `scope` fields before any PDF work begins. Conforming clients are unaffected — the validation rejects only malformed or potentially malicious inputs. Requests that fail validation receive a `400 Bad Request` response.
+
+| Field | Rules |
+|-------|-------|
+| `manifestLocation` | Must be a relative path ending in `.json` (e.g. `/apps/landing/fed-mods.json`) **or** an absolute `https://` URL from an allowed origin (`console.redhat.com`, `console.stage.redhat.com`). In non-production environments, `http://localhost` is also accepted. |
+| `module` | Must be a relative module path starting with `./` (e.g. `./PdfEntry`). Path traversal (`..`) is not allowed. |
+| `scope` | Must contain only alphanumeric characters, underscores, hyphens, slashes, or `@` (e.g. `landing`). |
+
+A missing `payload` in the request body returns `400 "Missing payload in request body"`.
+
+### Error response format
+
+All API errors use a consistent JSON format:
+
+```json
+{
+  "error": {
+    "status": 400,
+    "statusText": "Bad Request",
+    "description": "Invalid field \"manifestLocation\": manifestLocation must be a relative JSON path or an absolute https:// URL from allowed origins"
+  }
+}
+```
+
+When polling `/v2/status`, a `Failed` status now includes the actual error message describing what went wrong (S3 upload failure, PDF merge error, etc.) instead of a generic message.
 
 ## Wrapping up
 
