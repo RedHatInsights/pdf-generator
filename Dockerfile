@@ -45,7 +45,7 @@ RUN dnf install -y bzip2 fontconfig pango \
 RUN rpm -qa --queryformat '%{NAME}\n' | sort > /pkgs-after.txt && \
     comm -13 /pkgs-before.txt /pkgs-after.txt > /new-pkgs.txt && \
     printf '%s\n' glib2 dbus-libs expat krb5-libs gnutls libxml2 bzip2-libs \
-      libffi libcom_err libidn2 keyutils-libs xz-libs libmount p11-kit libtasn1 libunistring >> /new-pkgs.txt && \
+      libffi libcom_err libidn2 keyutils-libs xz-libs libmount libblkid libuuid p11-kit libtasn1 libunistring >> /new-pkgs.txt && \
     mkdir -p /chrome-rootfs && \
     cat /new-pkgs.txt | xargs rpm -ql 2>/dev/null | while IFS= read -r f; do \
       if [ -d "$f" ] && [ ! -L "$f" ]; then \
