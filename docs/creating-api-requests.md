@@ -6,6 +6,18 @@
 2. [Local development setup](./local-development-setup.md)
 3. [PDF Template development](./pdf-template-development.md)
 
+## Payload field requirements
+
+All payload fields are validated server-side before PDF generation begins. Invalid values return `400 Bad Request`.
+
+| Field | Required | Rules |
+|-------|----------|-------|
+| `manifestLocation` | Yes | Relative path ending in `.json` (e.g. `/apps/landing/fed-mods.json`) or an absolute `https://` URL from an allowed origin (`console.redhat.com`, `console.stage.redhat.com`). `http://localhost` is accepted in non-production environments. |
+| `scope` | Yes | Alphanumeric identifier (letters, digits, `_`, `-`, `/`, `@`). |
+| `module` | Yes | Relative module path starting with `./` (e.g. `./PdfEntry`). No path traversal (`..`). |
+| `fetchDataParams` | No | Object passed to your template's `fetchData` function as the second argument. |
+| `additionalData` | No | Arbitrary key-value pairs passed through to the template. |
+
 ## Using Chrome UI API
 
 The Chrome shell has exposed API that handles the API requests. The process of generating PDFs is tasked based and the initial request does not return the PDF itself, only the task ID. The Chroming API takes care of monitoring the tasks and downloading the PDF when its ready, or catching the error and reporting it.
