@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM registry.access.redhat.com/hi/nodejs:22-builder@sha256:14cf2c8b90e4086d28ffdada410fcb3e3597ec1bcbf717cd8241fd0de1b498dd AS builder
+FROM registry.access.redhat.com/hi/nodejs:22-builder@sha256:d4e7edbbe3f3eb1e0ed6c9efee00d3e11eff15a2e166f33265c48e1cd1f567b8 AS builder
 
 USER 0
 WORKDIR /pdf-gen
@@ -26,7 +26,7 @@ RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/sr
 # Stage 2: Collect Chrome runtime dependencies
 # UBI10 is used here because the hummingbird runtime has no package manager.
 # This stage is intermediate and discarded after build.
-FROM registry.access.redhat.com/ubi10/ubi:latest@sha256:8b67aabf90269c52e0746c3830ed6841fc12c29a3dce4bcfe76fd9d4f782fccd AS chrome-deps
+FROM registry.access.redhat.com/ubi10/ubi:latest@sha256:a3210c44455d3de518c9ebf53f391b31f5cb5e9b7f101a130ea2d87b17b32dc0 AS chrome-deps
 
 # Snapshot installed packages before adding Chrome deps
 RUN rpm -qa --queryformat '%{NAME}\n' | sort > /pkgs-before.txt
@@ -58,7 +58,7 @@ RUN rpm -qa --queryformat '%{NAME}\n' | sort > /pkgs-after.txt && \
     fi
 
 # Stage 3: Runtime (hardened hummingbird image)
-FROM registry.access.redhat.com/hi/nodejs:22@sha256:2dcd954e7ab35e75e45163deddb3eb66763d7fec03e414e7b0e1f5acf44273d7
+FROM registry.access.redhat.com/hi/nodejs:22@sha256:d905990b484db28e1d3d1ad8ff4c90bb103672bf28b57f354717e24138418363
 
 USER 0
 WORKDIR /pdf-gen
