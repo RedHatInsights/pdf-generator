@@ -43,13 +43,13 @@ createInternalProxies().forEach((proxy) => {
 function addProxy() {
   if (!hasProxy) {
     if (config.scalprum.apiHost === 'blank') {
-      apiLogger.warn(
+      apiLogger.warning(
         'API_HOST is not configured — API proxy will not be created. Set API_HOST in deployment config.',
       );
       return;
     }
     if (config.scalprum.assetsHost === 'blank') {
-      apiLogger.warn(
+      apiLogger.warning(
         'ASSETS_HOST is not configured — assets proxy will not be created. Set ASSETS_HOST in deployment config.',
       );
       return;
