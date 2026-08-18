@@ -42,12 +42,10 @@ createInternalProxies().forEach((proxy) => {
 
 function addProxy() {
   if (!hasProxy) {
-    if (config.scalprum.apiHost === 'blank') {
-      apiLogger.warning(
-        'API_HOST is not configured — API proxy will not be created. Set API_HOST in deployment config.',
-      );
-      return;
-    }
+    // The assets proxy serves the federated Scalprum modules the headless page
+    // renders, so it is required in every environment. It depends only on
+    // ASSETS_HOST — never gate it on API_HOST (which is unset in stage/prod and
+    // only feeds the dev-only api proxy below).
     if (config.scalprum.assetsHost === 'blank') {
       apiLogger.warning(
         'ASSETS_HOST is not configured — assets proxy will not be created. Set ASSETS_HOST in deployment config.',
@@ -80,7 +78,11 @@ function addProxy() {
     });
     router.use(assetsProxy);
 
-    if (!config.IS_PRODUCTION) {
+    if (!config.IS_PRODUCTION && config.scalprum.apiHost === 'blank') {
+      apiLogger.warning(
+        'API_HOST is not configured — API proxy will not be created. Set API_HOST in deployment config.',
+      );
+    } else if (!config.IS_PRODUCTION) {
       const apiProxy = createProxyMiddleware({
         target: config.scalprum.apiHost,
         secure: false,
