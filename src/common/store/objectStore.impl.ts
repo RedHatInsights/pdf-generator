@@ -1,4 +1,4 @@
-import { apiLogger } from '../logging';
+import { apiLogger, formatLogError } from '../logging';
 import config from '../config';
 import { Readable } from 'stream';
 import {
@@ -162,14 +162,16 @@ export class ObjectStore implements PDFStorageService {
         lastError = error;
 
         if (!isTransientS3Error(error)) {
-          apiLogger.error(`S3 upload permanent error for ${id}.pdf: ${error}`);
+          apiLogger.error(
+            `S3 upload permanent error for ${id}.pdf: ${formatLogError(error)}`,
+          );
           throw error;
         }
 
         if (attempt < S3_MAX_RETRIES) {
           const delay = computeRetryDelay(attempt, S3_RETRY_BASE_DELAY_MS);
           apiLogger.warning(
-            `S3 upload transient error for ${id}.pdf (attempt ${attempt + 1}/${S3_MAX_RETRIES + 1}), retrying in ${Math.round(delay)}ms: ${error}`,
+            `S3 upload transient error for ${id}.pdf (attempt ${attempt + 1}/${S3_MAX_RETRIES + 1}), retrying in ${Math.round(delay)}ms: ${formatLogError(error)}`,
           );
           await sleep(delay);
         }

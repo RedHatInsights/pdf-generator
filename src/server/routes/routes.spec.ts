@@ -81,6 +81,8 @@ jest.mock('../../common/logging', () => ({
     warn: jest.fn(),
     warning: jest.fn(),
   },
+  formatLogError: (value: unknown) =>
+    value instanceof Error ? value.message : String(value),
 }));
 
 jest.mock('../../common/securityLog', () => ({

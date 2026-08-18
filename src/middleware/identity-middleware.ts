@@ -1,6 +1,6 @@
 import httpContext from 'express-http-context';
 import type { Handler } from 'express';
-import { apiLogger } from '../common/logging';
+import { apiLogger, formatLogError } from '../common/logging';
 import { logAuthFailure } from '../common/securityLog';
 
 import config from '../common/config';
@@ -43,7 +43,7 @@ const identityMiddleware: Handler = (req, _res, next) => {
     }
     next();
   } catch (error) {
-    apiLogger.error(error);
+    apiLogger.error(`Identity middleware error: ${formatLogError(error)}`);
     logAuthFailure('Failed to decode identity header', req.originalUrl);
     next();
   }

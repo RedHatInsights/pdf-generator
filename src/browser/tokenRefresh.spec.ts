@@ -22,6 +22,8 @@ jest.mock('../common/logging', () => ({
     error: jest.fn(),
     warning: jest.fn(),
   },
+  formatLogError: (value: unknown) =>
+    value instanceof Error ? value.stack || value.message : String(value),
 }));
 
 describe('refreshAccessToken', () => {

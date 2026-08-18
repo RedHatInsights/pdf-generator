@@ -7,7 +7,12 @@ import http from 'http';
 import config from '../common/config';
 import router from './routes/routes';
 import identityMiddleware from '../middleware/identity-middleware';
-import { requestLogger, apiLogger } from '../common/logging';
+import {
+  requestLogger,
+  apiLogger,
+  formatLogError,
+  formatLogReason,
+} from '../common/logging';
 import {
   logStartup,
   logShutdown,
@@ -46,7 +51,7 @@ server.listen(PORT, () => {
   apiLogger.info(`Listening on port ${PORT}`);
   logStartup(PORT);
   consumeMessages(UPDATE_TOPIC).catch((error: unknown) => {
-    apiLogger.error(`${error}`);
+    apiLogger.error(`Kafka consumer error: ${formatLogError(error)}`);
   });
 });
 
@@ -63,27 +68,8 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 server.keepAliveTimeout = 61 * 1000;
 
 // Global error handlers to prevent crashes from unhandled rejections
-process.on(
-  'unhandledRejection',
-  (reason: unknown, promise: Promise<unknown>) => {
-    apiLogger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    logSecurityEvent(
-      {
-        action: 'ERROR',
-        resource_type: 'process',
-        resource_id: 'crc-pdf-generator',
-        outcome: 'failure',
-        principal: { type: 'system' },
-      },
-      `Unhandled rejection: ${reason}`,
-    );
-    // Don't exit in production - log and continue
-    // This prevents process crashes from async errors in PDF generation
-  },
-);
-
-process.on('uncaughtException', (error: Error) => {
-  apiLogger.error('Uncaught Exception:', error);
+process.on('unhandledRejection', (reason: unknown) => {
+  apiLogger.error(`Unhandled Rejection: ${formatLogError(reason)}`);
   logSecurityEvent(
     {
       action: 'ERROR',
@@ -92,14 +78,30 @@ process.on('uncaughtException', (error: Error) => {
       outcome: 'failure',
       principal: { type: 'system' },
     },
-    `Uncaught exception: ${error.message}`,
+    `Unhandled rejection: ${formatLogReason(reason)}`,
+  );
+  // Don't exit in production - log and continue
+  // This prevents process crashes from async errors in PDF generation
+});
+
+process.on('uncaughtException', (error: Error) => {
+  apiLogger.error(`Uncaught Exception: ${formatLogError(error)}`);
+  logSecurityEvent(
+    {
+      action: 'ERROR',
+      resource_type: 'process',
+      resource_id: 'crc-pdf-generator',
+      outcome: 'failure',
+      principal: { type: 'system' },
+    },
+    `Uncaught exception: ${formatLogReason(error)}`,
   );
   // Log the error but don't exit - let container orchestration handle restarts
 });
 
 // HTTP server error handler
 server.on('error', (error: Error) => {
-  apiLogger.error('HTTP Server error:', error);
+  apiLogger.error(`HTTP Server error: ${formatLogError(error)}`);
 });
 
 const metricsApp = express();
