@@ -202,10 +202,14 @@ describe('addProxy', () => {
     mockConfig.IS_PRODUCTION = false;
   });
 
-  it('does not create proxies when apiHost is blank', async () => {
+  // Regression guard for RHCLOUD-50438: API_HOST is unset in stage/prod, and
+  // apiHost only feeds the dev-only api proxy. A blank apiHost must NOT stop the
+  // assets proxy (which serves the federated modules needed to render the PDF).
+  it('still creates the assets proxy when apiHost is blank but assetsHost is set', async () => {
     await jest.isolateModulesAsync(async () => {
       mockConfig.scalprum.apiHost = 'blank';
       mockConfig.scalprum.assetsHost = 'https://console.redhat.com';
+      mockConfig.IS_PRODUCTION = false;
       const { sendTestRequest } =
         await import('../../__test-utils__/createTestApp');
       const router = (await import('./routes')).default;
@@ -216,8 +220,52 @@ describe('addProxy', () => {
         Host: 'evil.example.com',
       });
 
-      expect(mockConfig.scalprum.apiHost).toBe('blank');
-      expect(mockCreateProxyMiddleware).not.toHaveBeenCalled();
+      // Assets proxy is created; the api proxy is skipped because apiHost is blank.
+      expect(mockCreateProxyMiddleware).toHaveBeenCalledTimes(1);
+      expect(mockCreateProxyMiddleware).toHaveBeenCalledWith(
+        expect.objectContaining({ target: 'https://console.redhat.com' }),
+      );
+    });
+  });
+
+  it('creates only the assets proxy in production (api proxy is dev-only)', async () => {
+    await jest.isolateModulesAsync(async () => {
+      mockConfig.scalprum.apiHost = 'https://console.redhat.com';
+      mockConfig.scalprum.assetsHost = 'https://console.redhat.com';
+      mockConfig.IS_PRODUCTION = true;
+      const { sendTestRequest } =
+        await import('../../__test-utils__/createTestApp');
+      const router = (await import('./routes')).default;
+      const app = express();
+      app.use(router);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'pdf.example.com',
+      });
+
+      expect(mockCreateProxyMiddleware).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('still creates the assets proxy in production when apiHost is blank', async () => {
+    await jest.isolateModulesAsync(async () => {
+      mockConfig.scalprum.apiHost = 'blank';
+      mockConfig.scalprum.assetsHost = 'https://console.redhat.com';
+      mockConfig.IS_PRODUCTION = true;
+      const { sendTestRequest } =
+        await import('../../__test-utils__/createTestApp');
+      const router = (await import('./routes')).default;
+      const app = express();
+      app.use(router);
+
+      await sendTestRequest(app, 'GET', `/puppeteer?${puppeteerQuery}`, {
+        Host: 'pdf.example.com',
+      });
+
+      expect(mockCreateProxyMiddleware).toHaveBeenCalledTimes(1);
+      expect(mockCreateProxyMiddleware).toHaveBeenCalledWith(
+        expect.objectContaining({ target: 'https://console.redhat.com' }),
+      );
     });
   });
 
