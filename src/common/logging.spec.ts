@@ -1,4 +1,4 @@
-import { formatLogError, formatLogReason } from './logging';
+import { formatLogError, formatLogReason, apiLogger } from './logging';
 
 describe('formatLogError', () => {
   it('includes stack for Error values', () => {
@@ -38,5 +38,18 @@ describe('formatLogReason', () => {
     expect(formatLogReason({ code: 42 })).toBe('{"code":42}');
     expect(formatLogReason(null)).toBe('null');
     expect(formatLogReason(undefined)).toBe('undefined');
+  });
+});
+
+describe('apiLogger syslog levels', () => {
+  // apiLogger uses winston.config.syslog.levels, so the level method is
+  // `warning`, not `warn`. TypeScript cannot catch a `.warn(...)` typo because
+  // winston.Logger statically declares the default npm-level methods regardless
+  // of the runtime `levels` config, so guard the naming at runtime instead.
+  it('exposes `warning` and not `warn`', () => {
+    expect(typeof apiLogger.warning).toBe('function');
+    expect(
+      (apiLogger as unknown as Record<string, unknown>).warn,
+    ).toBeUndefined();
   });
 });
