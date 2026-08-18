@@ -19,6 +19,8 @@ jest.mock('../common/logging', () => ({
     warn: jest.fn(),
     warning: jest.fn(),
   },
+  formatLogError: (value: unknown) =>
+    value instanceof Error ? value.message : String(value),
 }));
 
 const mockedLogAuthFailure = logAuthFailure as jest.MockedFunction<

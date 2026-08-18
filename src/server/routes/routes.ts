@@ -21,7 +21,7 @@ import {
   GeneratePayload,
 } from '../../common/types';
 import { TokenManager } from '../../browser/tokenRefresh';
-import { apiLogger, hpmLogger } from '../../common/logging';
+import { apiLogger, hpmLogger, formatLogError } from '../../common/logging';
 import {
   logSecurityEvent,
   getPrincipalFromContext,
@@ -469,7 +469,7 @@ router.get(`/preview`, async (req: PreviewHandlerRequest, res) => {
   } catch (error: unknown) {
     if (error instanceof Error) {
       // error.code is not part of the Error definition for TS inside of Node. Choices: delete the usage of code, or, force a new definition.
-      apiLogger.error(`${error.message}`);
+      apiLogger.error(formatLogError(error));
       // res.status((error.code as number) || 500).send(error.message);
       res.status(500).send(error.message); // only here as example, we don't want to force a 500 every time.
     }
@@ -483,7 +483,7 @@ router.get('/healthz', (_req, res, _next) => {
 router.get(`${config?.APIPrefix}/v1/openapi.json`, (_req, res, _next) => {
   fs.readFile('./docs/openapi.json', 'utf8', (err, data) => {
     if (err) {
-      apiLogger.error(err);
+      apiLogger.error(`OpenAPI spec read error: ${formatLogError(err)}`);
       return res
         .status(500)
         .send(

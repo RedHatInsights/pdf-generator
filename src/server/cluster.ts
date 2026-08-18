@@ -2,7 +2,7 @@ import { Cluster } from 'puppeteer-cluster';
 import config from '../common/config';
 import { BROWSER_TIMEOUT } from '../common/constants';
 import { CHROMIUM_PATH } from '../browser/helpers';
-import { apiLogger } from '../common/logging';
+import { apiLogger, formatLogError } from '../common/logging';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
 import { UpdateStatus } from './utils';
 
@@ -40,7 +40,9 @@ export const GetPupCluster = async () => {
 
   // Add error handlers to prevent unhandled rejections from cluster tasks
   cluster.on('taskerror', async (err: Error, data: unknown) => {
-    apiLogger.error('Puppeteer cluster task error:', err, 'data:', data);
+    apiLogger.error(
+      `Puppeteer cluster task error: ${formatLogError(err)} data: ${formatLogError(data)}`,
+    );
 
     // After all retries exhausted, record component failure and invalidate collection
     if (data && typeof data === 'object' && 'collectionId' in data) {

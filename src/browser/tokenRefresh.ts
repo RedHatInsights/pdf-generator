@@ -1,5 +1,5 @@
 import config from '../common/config';
-import { apiLogger } from '../common/logging';
+import { apiLogger, formatLogError } from '../common/logging';
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 
@@ -57,7 +57,7 @@ export async function refreshAccessToken(
     apiLogger.debug('[token-refresh] Token refreshed successfully');
     return { accessToken: `Bearer ${data.access_token}` };
   } catch (error) {
-    apiLogger.error(`[token-refresh] Error: ${error}`);
+    apiLogger.error(`[token-refresh] Error: ${formatLogError(error)}`);
     return { error: 'transient' };
   }
 }
