@@ -1,12 +1,12 @@
-# Stage 1: Build the application
-FROM registry.access.redhat.com/hi/nodejs:22-builder@sha256:d4e7edbbe3f3eb1e0ed6c9efee00d3e11eff15a2e166f33265c48e1cd1f567b8 AS builder
+# Stage 1: Build
+FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1785789721@sha256:f1c63a4a81316b97edb34f61340eb59229b72681bb2040a33296947b9676dc55 AS builder
 
 USER 0
 WORKDIR /pdf-gen
 
 # Install build tools for native npm modules (node-gyp)
 RUN mkdir -p bin \
- && dnf install -y python3 make gcc-c++ git unzip \
+ && dnf install -y python3 make gcc-c++ git \
  && dnf clean all
 
 # Install npm dependencies from lockfile — separate layer so code changes don't bust npm cache
@@ -23,52 +23,21 @@ RUN npx @puppeteer/browsers install chrome@151.0.7922.137 --path /opt/app-root/s
  && npm run build \
  && npm prune --omit=dev
 
-# Stage 2: Collect Chrome runtime dependencies
-# UBI10 is used here because the hummingbird runtime has no package manager.
-# This stage is intermediate and discarded after build.
-FROM registry.access.redhat.com/ubi10/ubi:latest@sha256:a3210c44455d3de518c9ebf53f391b31f5cb5e9b7f101a130ea2d87b17b32dc0 AS chrome-deps
-
-# Snapshot installed packages before adding Chrome deps
-RUN rpm -qa --queryformat '%{NAME}\n' | sort > /pkgs-before.txt
-
-# Install Chrome runtime dependencies
-RUN dnf install -y bzip2 fontconfig pango \
-  libXcomposite libXcursor libXdamage \
-  libXext libXi libXtst cups-libs \
-  libXrandr alsa-lib \
-  atk gtk3 libdrm mesa-libgbm libxshmfence \
-  nss && dnf clean all
-
-# Collect files from newly installed + pre-installed Chrome deps into /chrome-rootfs
-# glib2, dbus-libs, expat, krb5-libs, gnutls, libxml2, bzip2-libs are pre-installed
-# in UBI10 but absent in hummingbird — append them so the file-copy loop includes them
-RUN rpm -qa --queryformat '%{NAME}\n' | sort > /pkgs-after.txt && \
-    comm -13 /pkgs-before.txt /pkgs-after.txt > /new-pkgs.txt && \
-    printf '%s\n' glib2 dbus-libs expat krb5-libs gnutls libxml2 bzip2-libs \
-      libffi libcom_err libidn2 keyutils-libs xz-libs libmount libblkid libuuid p11-kit libtasn1 libunistring >> /new-pkgs.txt && \
-    mkdir -p /chrome-rootfs && \
-    cat /new-pkgs.txt | xargs rpm -ql 2>/dev/null | while IFS= read -r f; do \
-      if [ -d "$f" ] && [ ! -L "$f" ]; then \
-        mkdir -p "/chrome-rootfs$f"; \
-      elif [ -e "$f" ] || [ -L "$f" ]; then \
-        mkdir -p "/chrome-rootfs$(dirname "$f")" && \
-        cp -a "$f" "/chrome-rootfs$f" 2>/dev/null || true; \
-      fi; \
-    done && \
-    if [ -d /chrome-rootfs/usr/sbin ]; then \
-      mkdir -p /chrome-rootfs/usr/bin && \
-      cp -a /chrome-rootfs/usr/sbin/. /chrome-rootfs/usr/bin/ 2>/dev/null || true && \
-      rm -rf /chrome-rootfs/usr/sbin; \
-    fi
-
-# Stage 3: Runtime (hardened hummingbird image)
-FROM registry.access.redhat.com/hi/nodejs:22@sha256:d905990b484db28e1d3d1ad8ff4c90bb103672bf28b57f354717e24138418363
+# Stage 2: Runtime
+FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1785373147@sha256:a8b67d7c6a96e0aa229ba0e3b84045db98ce640291da088874dc5d67352132d2
 
 USER 0
 WORKDIR /pdf-gen
 
-# Copy Chrome runtime dependencies (libs, fonts, configs) from chrome-deps stage
-COPY --from=chrome-deps /chrome-rootfs/ /
+# Install Chrome runtime dependencies and strip base-image npm/nodemon
+# (not needed at runtime; their vulnerable transitive deps trigger grype)
+RUN microdnf install -y bzip2 fontconfig pango \
+  libXcomposite libXcursor libXdamage \
+  libXext libXi libXtst cups-libs \
+  libXrandr alsa-lib \
+  atk gtk3 libdrm mesa-libgbm libxshmfence \
+  nss && microdnf clean all \
+ && rm -rf /usr/lib/node_modules /usr/bin/npm /usr/bin/npx /usr/bin/nodemon
 
 # Copy application artifacts from builder
 COPY --chown=1001:0 --from=builder /pdf-gen/dist ./dist
