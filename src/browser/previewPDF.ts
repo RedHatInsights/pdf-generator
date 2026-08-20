@@ -1,91 +1,80 @@
-import puppeteer from 'puppeteer';
-import {
-  CHROMIUM_PATH,
-  pageHeight,
-  pageWidth,
-  setWindowProperty,
-} from './helpers';
-import config from '../common/config';
-import { getDevMockToken } from '../common/devMockToken';
+import type { Page } from 'puppeteer';
+import { pageHeight, pageWidth, setWindowProperty } from './helpers';
 import { getHeaderAndFooterTemplates } from '../server/render-template';
 import { apiLogger } from '../common/logging';
+import { cluster } from '../server/cluster';
+import { BROWSER_TIMEOUT } from '../common/constants';
 
-function delay(time: number) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, time);
-  });
-}
-
-const previewPdf = async (url: string) => {
-  const createBuffer = async () => {
-    const browser = await puppeteer.launch({
-      headless: true,
-      ...(config?.IS_PRODUCTION
-        ? {
-            // we have a different dir structure than puppeteer expects. We have to point it to the correct chromium executable
-            executablePath: CHROMIUM_PATH,
-          }
-        : {}),
-      args: ['--no-sandbox', '--disable-gpu'],
-    });
-    const page = await browser.newPage();
-
-    // Enables console logging in Headless mode - handy for debugging components
-    page.on('console', (msg) =>
-      apiLogger.debug(`[Headless log] ${msg.text()}`),
-    );
-    await page.setViewport({ width: pageWidth, height: pageHeight });
-    const extraHeaders: Record<string, string> = {};
-    const mockToken = getDevMockToken(!!config?.IS_PRODUCTION);
-    if (mockToken) {
-      extraHeaders['Authorization'] = mockToken;
-    }
-    await page.setCookie({ name: 'cs_jwt', value: 'bar', domain: 'localhost' });
-    await page.setExtraHTTPHeaders(extraHeaders);
-
-    const pageStatus = await page.goto(url, {
-      waitUntil: 'networkidle2',
-    });
-
-    await delay(1000);
-    await page.waitForNetworkIdle();
-    const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
-
-    await setWindowProperty(
-      page,
-      'customPuppeteerParams',
-      JSON.stringify({
-        puppeteerParams: {
-          pageWidth,
-          pageHeight,
-        },
-      }),
-    );
-
-    const pdfBuffer = await page.pdf({
-      format: 'a4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate,
-      footerTemplate,
-      margin: {
-        top: '54px',
-        bottom: '54px',
-      },
-    });
-
-    if (!pageStatus?.ok()) {
-      throw new Error(
-        `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`,
+const previewPdf = async (url: string): Promise<Buffer> => {
+  const pdf = await cluster.execute(async ({ page }: { page: Page }) => {
+    try {
+      page.on('console', (msg) =>
+        apiLogger.debug(`[Headless log] ${msg.text()}`),
       );
+      await page.setViewport({ width: pageWidth, height: pageHeight });
+
+      await setWindowProperty(
+        page,
+        'customPuppeteerParams',
+        JSON.stringify({
+          puppeteerParams: {
+            pageWidth,
+            pageHeight,
+          },
+        }),
+      );
+
+      const extraHeaders: Record<string, string> = {};
+      if (process.env.MOCK_TOKEN) {
+        extraHeaders['Authorization'] = process.env.MOCK_TOKEN;
+      }
+      await page.setCookie({
+        name: 'cs_jwt',
+        value: 'bar',
+        domain: 'localhost',
+      });
+      await page.setExtraHTTPHeaders(extraHeaders);
+
+      const pageStatus = await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: BROWSER_TIMEOUT,
+      });
+
+      if (!pageStatus?.ok()) {
+        throw new Error(
+          `Puppeteer error while loading the react app: ${pageStatus?.statusText()}`,
+        );
+      }
+
+      await page.waitForNetworkIdle({
+        idleTime: 1000,
+        timeout: BROWSER_TIMEOUT,
+      });
+
+      const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
+
+      return await page.pdf({
+        format: 'a4',
+        printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
+        margin: {
+          top: '54px',
+          bottom: '54px',
+        },
+        timeout: BROWSER_TIMEOUT,
+      });
+    } finally {
+      try {
+        await page.close();
+      } catch {
+        // page may already be closed
+      }
     }
+  });
 
-    await browser.close();
-    return pdfBuffer;
-  };
-
-  const bufferLock = createBuffer();
-  return await bufferLock;
+  return Buffer.from(pdf as Uint8Array);
 };
 
 export default previewPdf;
