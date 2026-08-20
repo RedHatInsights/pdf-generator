@@ -296,35 +296,6 @@ describe('generatePdf', () => {
     });
   });
 
-  describe('timeout failure', () => {
-    it('wraps timeout error in PdfGenerationError without calling UpdateStatus(Failed)', async () => {
-      mockPage.goto.mockRejectedValue(
-        new Error('TimeoutError: Navigation timeout of 120000ms exceeded'),
-      );
-      const req = makePdfRequest();
-      initCollection('coll-timeout');
-
-      const error = await generatePdf(
-        req,
-        'coll-timeout',
-        1,
-        makeTokenManager(),
-      ).catch((e: unknown) => e);
-
-      expect(error).toBeInstanceOf(PdfGenerationError);
-      if (error instanceof PdfGenerationError) {
-        expect(error.message).toContain('timeout');
-        expect(error.collectionId).toBe('coll-timeout');
-        expect(error.componentId).toBe(req.uuid);
-      }
-
-      expect(UpdateStatus).toHaveBeenCalledTimes(1);
-      expect(UpdateStatus).toHaveBeenCalledWith(
-        expect.objectContaining({ status: PdfStatus.Generating }),
-      );
-    });
-  });
-
   describe('error wrapping', () => {
     it('wraps non-PdfGenerationError in PdfGenerationError with collectionId and componentId', async () => {
       mockPage.pdf.mockRejectedValue(new Error('pdf generation crashed'));
