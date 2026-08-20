@@ -130,7 +130,7 @@ export class ObjectStore implements PDFStorageService {
 
   public async uploadPDF(id: string, path: string) {
     const bucket = config?.objectStore.buckets[0].name;
-    apiLogger.debug(`${JSON.stringify(config?.objectStore)}`);
+    apiLogger.debug(`Using bucket: ${bucket}`);
     const exists = await this.checkBucketExists(bucket);
     if (!exists) {
       await this.createBucket(bucket);

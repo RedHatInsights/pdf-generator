@@ -5,16 +5,18 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const { merge } = require('webpack-merge');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const baseConfig = {
   mode: process.env.NODE_ENV || 'development',
-  devtool: 'source-map',
+  devtool: isProduction ? 'hidden-source-map' : 'source-map',
   resolve: {
     extensions: ['.ts', '.tsx', '.js'],
   },
 };
 
 const serverConfig = {
-  devtool: 'eval-source-map',
+  ...(isProduction ? {} : { devtool: 'eval-source-map' }),
   name: 'server',
   target: 'node',
   externalsPresets: {
@@ -69,7 +71,9 @@ const serverConfig = {
   },
   plugins: [
     new CleanWebpackPlugin({
-      cleanOnceBeforeBuildPatterns: ['!public/**'],
+      // Keep dist/public assets across builds, but drop stale browser source maps
+      // (client production builds use devtool:false and must not ship leftover *.map).
+      cleanOnceBeforeBuildPatterns: ['**/*', '!public/**', 'public/**/*.map'],
     }),
     new DefinePlugin({
       __Server__: JSON.stringify(true),
@@ -120,6 +124,9 @@ const moduleFederationPlugin = new container.ModuleFederationPlugin({
 const clientConfig = {
   name: 'client',
   target: 'web',
+  // Do not emit browser .map files in production — they would be HTTP-reachable
+  // under /public even with hidden-source-map (guessable *.js.map URLs).
+  ...(isProduction ? { devtool: false } : {}),
   entry: {
     client: path.resolve(__dirname, '../src/client/client.ts'),
   },

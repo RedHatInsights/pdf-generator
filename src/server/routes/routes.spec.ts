@@ -311,3 +311,86 @@ describe('addProxy', () => {
     });
   });
 });
+
+describe('MOCK_TOKEN auth bypass security (RHCLOUD-49239)', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('rejects MOCK_TOKEN in production mode', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const originalEnv = process.env.MOCK_TOKEN;
+      process.env.MOCK_TOKEN = 'Bearer fake-dev-token';
+
+      mockConfig.IS_PRODUCTION = true;
+      const { getDevMockToken } = await import('../../common/devMockToken');
+
+      // Verify the helper function correctly gates MOCK_TOKEN
+      expect(getDevMockToken(true, process.env.MOCK_TOKEN)).toBeUndefined();
+      expect(getDevMockToken(false, process.env.MOCK_TOKEN)).toBe(
+        'Bearer fake-dev-token',
+      );
+
+      if (originalEnv === undefined) {
+        delete process.env.MOCK_TOKEN;
+      } else {
+        process.env.MOCK_TOKEN = originalEnv;
+      }
+    });
+  });
+
+  it('getPdfRequestBody uses undefined authHeader in production when context is empty', async () => {
+    const originalEnv = process.env.MOCK_TOKEN;
+    process.env.MOCK_TOKEN = 'Bearer should-not-be-used';
+    mockConfig.IS_PRODUCTION = true;
+
+    try {
+      // No express-http-context is active in this test, so httpContext.get
+      // returns undefined for the authorization key — authHeader falls back to
+      // getDevMockToken(IS_PRODUCTION), which must reject MOCK_TOKEN in prod.
+      const { getPdfRequestBody } = await import('./routes');
+      expect(typeof getPdfRequestBody).toBe('function');
+
+      const result = getPdfRequestBody({
+        manifestLocation: 'test',
+        module: 'test',
+        scope: 'test',
+      });
+
+      // In production with no context auth, MOCK_TOKEN must NOT leak through.
+      expect(result.authHeader).toBeUndefined();
+    } finally {
+      mockConfig.IS_PRODUCTION = false;
+      if (originalEnv === undefined) {
+        delete process.env.MOCK_TOKEN;
+      } else {
+        process.env.MOCK_TOKEN = originalEnv;
+      }
+    }
+  });
+
+  it('getPdfRequestBody uses MOCK_TOKEN as authHeader outside production', async () => {
+    const originalEnv = process.env.MOCK_TOKEN;
+    process.env.MOCK_TOKEN = 'Bearer dev-token';
+    mockConfig.IS_PRODUCTION = false;
+
+    try {
+      const { getPdfRequestBody } = await import('./routes');
+
+      const result = getPdfRequestBody({
+        manifestLocation: 'test',
+        module: 'test',
+        scope: 'test',
+      });
+
+      // Outside production, MOCK_TOKEN is the expected dev fallback.
+      expect(result.authHeader).toBe('Bearer dev-token');
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.MOCK_TOKEN;
+      } else {
+        process.env.MOCK_TOKEN = originalEnv;
+      }
+    }
+  });
+});
