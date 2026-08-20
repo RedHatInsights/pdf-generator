@@ -263,10 +263,10 @@ async function runPageTask(
         const message =
           taskError instanceof Error ? taskError.message : String(taskError);
         apiLogger.error(`Component ${componentId} failed: ${message}`);
-        // Do not UpdateStatus(Failed) here - it triggers verifyCollection → invalidateCollection
-        // which sets collection.status = Failed before cluster retries run.
-        // The taskerror handler in cluster.ts records the failure after retries exhausted.
-        throw taskError;
+        if (taskError instanceof PdfGenerationError) {
+          throw taskError;
+        }
+        throw new PdfGenerationError(collectionId, componentId, message);
       } finally {
         await page.close().catch(() => {});
       }
