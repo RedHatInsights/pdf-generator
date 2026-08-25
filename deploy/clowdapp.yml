@@ -24,6 +24,7 @@ objects:
     - vulnerability-engine
     - ros-backend
     - ccx-smart-proxy
+    - content-sources-backend
     deployments:
     - name: api
       minReplicas: ${{MIN_REPLICAS}}

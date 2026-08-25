@@ -41,6 +41,22 @@ describe('mergeClowderEndpoints', () => {
     });
   });
 
+  it('registers content-sources-backend as an integrated app', () => {
+    const contentSources = endpoint({
+      app: 'content-sources-backend',
+      name: 'service',
+      hostname: 'content-sources-backend-service.ns.svc',
+    });
+    expect(mergeClowderEndpoints(undefined, [contentSources])).toEqual({
+      'content-sources-backend': {
+        app: 'content-sources-backend',
+        hostname: 'content-sources-backend-service.ns.svc',
+        name: 'service',
+        port: 8000,
+      },
+    });
+  });
+
   it('merges privateEndpoints before public and uses app-name keys when app repeats', () => {
     const manager = endpoint({
       app: 'vulnerability-engine',
@@ -157,6 +173,12 @@ describe('buildInternalRouteKey', () => {
 
   it('returns service only when deployment is omitted', () => {
     expect(buildInternalRouteKey(ServiceNames.compliance)).toBe('compliance');
+  });
+
+  it('builds a content-sources-backend key', () => {
+    expect(buildInternalRouteKey(ServiceNames['content-sources-backend'])).toBe(
+      'content-sources-backend',
+    );
   });
 });
 

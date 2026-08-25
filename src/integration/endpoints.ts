@@ -7,6 +7,7 @@ export enum ServiceNames {
   'vulnerability-engine' = 'vulnerability-engine',
   compliance = 'compliance',
   'ccx-smart-proxy' = 'ccx-smart-proxy',
+  'content-sources-backend' = 'content-sources-backend',
 }
 
 export type ServicesEndpoints = {
