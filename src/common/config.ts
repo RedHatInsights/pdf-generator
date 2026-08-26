@@ -54,7 +54,7 @@ const defaultConfig: {
     proxyAgent?: string;
   };
 } = {
-  webPort: 8000,
+  webPort: Number.parseInt(process.env.WEB_PORT || '8000', 10) || 8000,
   metricsPort: 9001,
   metricsPath: '/metrics',
   endpoints: {},
