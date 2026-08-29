@@ -1,3 +1,40 @@
+export type HeaderBrand = 'redhat' | 'lightwell';
+
+export function resolveHeaderBrand(
+  additionalData?: Record<string, unknown>,
+): HeaderBrand {
+  return additionalData?.headerBrand === 'lightwell' ? 'lightwell' : 'redhat';
+}
+
+const LightwellLogo = ({ logoSvg }: { logoSvg?: string }) => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      height: 28,
+    }}
+  >
+    {logoSvg && (
+      <div
+        style={{ width: 28, height: 28 }}
+        dangerouslySetInnerHTML={{ __html: logoSvg }}
+      />
+    )}
+    <span
+      style={{
+        fontFamily: 'Red Hat Text, Helvetica, Arial, sans-serif',
+        fontSize: 16,
+        fontStyle: 'normal',
+        fontWeight: 600,
+        color: '#151515',
+      }}
+    >
+      Lightwell
+    </span>
+  </div>
+);
+
 const RedHatLogo = () => (
   <svg
     version="1.1"
@@ -40,9 +77,19 @@ l13.9,26.8H292l-16.2-29.5c8.4-3.4,13.9-11.6,13.9-20.7c0-13.2-10.4-23.5-26-23.5H2
   </svg>
 );
 
-const HeaderLogo = () => (
-  <div style={{ width: 150 }}>
-    <RedHatLogo />
+const HeaderLogo = ({
+  brand = 'redhat',
+  logoSvg,
+}: {
+  brand?: HeaderBrand;
+  logoSvg?: string;
+}) => (
+  <div style={{ width: brand === 'lightwell' ? 'auto' : 150 }}>
+    {brand === 'lightwell' ? (
+      <LightwellLogo logoSvg={logoSvg} />
+    ) : (
+      <RedHatLogo />
+    )}
   </div>
 );
 

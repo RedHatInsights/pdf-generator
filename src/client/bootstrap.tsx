@@ -34,11 +34,19 @@ if (typeof state.additionalData === 'string') {
   state.additionalData = JSON.parse(state.additionalData);
 }
 
+const isLightwellBrand = state.additionalData?.headerBrand === 'lightwell';
+
 const config: AppsConfig = {
   [state.scope]: {
     name: state.scope,
     manifestLocation: state.manifestLocation,
   },
+  ...(isLightwellBrand && {
+    frontendAssets: {
+      name: 'frontendAssets',
+      manifestLocation: '/apps/frontend-assets/fed-mods.json',
+    },
+  }),
 };
 
 type CreateAxiosRequestConfig = AxiosRequestConfig & {
@@ -223,6 +231,16 @@ const App = () => {
       }}
     >
       <MetadataWrapper />
+      {isLightwellBrand && (
+        <div id="pdf-header-logo-source" style={{ display: 'none' }}>
+          <ScalprumComponent
+            scope="frontendAssets"
+            module="./LightwellLogomarkIcon"
+            svgProps={{ width: 28, height: 28 }}
+            ErrorComponent={<span />}
+          />
+        </div>
+      )}
     </ScalprumProvider>
   );
 };

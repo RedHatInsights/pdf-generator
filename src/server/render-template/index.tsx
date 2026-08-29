@@ -6,18 +6,31 @@ import Header from './Header';
 import Footer from './Footer';
 import instanceConfig from '../../common/config';
 import { safeJsonStringify } from '../utils';
+import { HeaderBrand, resolveHeaderBrand } from './HeaderLogo';
 
-let cachedTemplates: {
-  headerTemplate: string;
-  footerTemplate: string;
-} | null = null;
+export type { HeaderBrand };
+export { resolveHeaderBrand };
 
-export function getHeaderAndFooterTemplates(): {
+const cachedTemplates: Partial<
+  Record<string, { headerTemplate: string; footerTemplate: string }>
+> = {};
+
+export function getHeaderAndFooterTemplates(
+  brand: HeaderBrand = 'redhat',
+  lightwellSvg?: string | null,
+): {
   headerTemplate: string;
   footerTemplate: string;
 } {
-  if (cachedTemplates) {
-    return cachedTemplates;
+  // Lightwell with a logo SVG is dynamic (sourced from frontend-assets at runtime),
+  // so we skip caching for that case. Red Hat and Lightwell-without-logo are static.
+  const cacheKey = brand === 'lightwell' && lightwellSvg ? null : brand;
+
+  if (cacheKey) {
+    const cached = cachedTemplates[cacheKey];
+    if (cached) {
+      return cached;
+    }
   }
 
   const root = process.cwd();
@@ -31,10 +44,12 @@ export function getHeaderAndFooterTemplates(): {
     { encoding: 'utf-8' },
   );
 
-  cachedTemplates = {
+  const templates = {
     headerTemplate: headerBase.replace(
       '<div id="content"></div>',
-      renderToStaticMarkup(<Header />),
+      renderToStaticMarkup(
+        <Header brand={brand} logoSvg={lightwellSvg ?? undefined} />,
+      ),
     ),
     footerTemplate: footerBase.replace(
       '<div id="content"></div>',
@@ -42,7 +57,11 @@ export function getHeaderAndFooterTemplates(): {
     ),
   };
 
-  return cachedTemplates;
+  if (cacheKey) {
+    cachedTemplates[cacheKey] = templates;
+  }
+
+  return templates;
 }
 
 function renderTemplate(payload: GeneratePayload) {

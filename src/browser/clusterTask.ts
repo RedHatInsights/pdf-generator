@@ -3,7 +3,10 @@ import { PdfRequestBody } from '../common/types';
 import { apiLogger } from '../common/logging';
 import { pageHeight, pageWidth, setWindowProperty } from './helpers';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
-import { getHeaderAndFooterTemplates } from '../server/render-template';
+import {
+  getHeaderAndFooterTemplates,
+  resolveHeaderBrand,
+} from '../server/render-template';
 import config from '../common/config';
 import { store } from '../common/store';
 import { UpdateStatus, isValidPageResponse } from '../server/utils';
@@ -30,6 +33,7 @@ async function runPageTask(
     url,
     identity,
     fetchDataParams,
+    additionalData,
     landscape = false,
     uuid: componentId,
   }: PdfRequestBody,
@@ -230,17 +234,41 @@ async function runPageTask(
           return;
         }
 
-        const { headerTemplate, footerTemplate } =
-          getHeaderAndFooterTemplates();
+        const brand = resolveHeaderBrand(additionalData);
+
+        let lightwellSvg: string | null = null;
+        if (brand === 'lightwell') {
+          try {
+            await page.waitForSelector('#pdf-header-logo-source svg', {
+              timeout: 5000,
+            });
+          } catch {
+            // fall through to text-only header below
+          }
+          lightwellSvg = await page.evaluate(() => {
+            const el = document.getElementById('pdf-header-logo-source');
+            return el?.innerHTML?.trim() || null;
+          });
+          if (!lightwellSvg) {
+            apiLogger.warning(
+              'Lightwell logomark not rendered from frontend-assets — text-only header',
+            );
+          }
+        }
+
+        const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates(
+          brand,
+          lightwellSvg,
+        );
 
         const buffer = await page.pdf({
           path: pdfPath,
           format: 'a4',
           printBackground: true,
-          margin: {
-            top: '54px',
-            bottom: '54px',
-          },
+          margin:
+            brand === 'lightwell'
+              ? { top: '80px', bottom: '54px', left: '28px', right: '28px' }
+              : { top: '54px', bottom: '54px' },
           landscape,
           displayHeaderFooter: true,
           headerTemplate,
