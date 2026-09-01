@@ -22,6 +22,20 @@ describe('handleTaskError', () => {
     jest.clearAllMocks();
   });
 
+  it('does not mark a component as Failed when the task will be retried', async () => {
+    await handleTaskError(
+      new Error('transient task failure'),
+      {
+        collectionId: 'coll-retry',
+        componentId: 'comp-retry',
+        order: 1,
+      },
+      true,
+    );
+
+    expect(UpdateStatus).not.toHaveBeenCalled();
+  });
+
   it('extracts collectionId and componentId from data and calls UpdateStatus(Failed)', async () => {
     await handleTaskError(new Error('task failed'), {
       collectionId: 'coll-data',

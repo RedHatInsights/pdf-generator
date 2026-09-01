@@ -6,8 +6,11 @@ import { UpdateStatus } from './utils';
 export async function handleTaskError(
   err: Error,
   data: unknown,
+  willRetry = false,
 ): Promise<void> {
   apiLogger.error('Puppeteer cluster task error:', err, 'data:', data);
+
+  if (willRetry) return;
 
   let collectionId: string | undefined;
   let componentId: string | undefined;
