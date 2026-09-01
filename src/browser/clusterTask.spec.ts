@@ -12,6 +12,7 @@ const mockPage = {
     .fn()
     .mockResolvedValue({ status: () => 200, statusText: () => 'OK' }),
   waitForNetworkIdle: jest.fn(),
+  waitForSelector: jest.fn().mockResolvedValue(undefined),
   setExtraHTTPHeaders: jest.fn(),
   setRequestInterception: jest.fn(),
   setCookie: jest.fn(),
@@ -66,10 +67,12 @@ jest.mock('./helpers', () => ({
 }));
 
 jest.mock('../server/render-template', () => ({
-  getHeaderAndFooterTemplates: () => ({
+  getHeaderAndFooterTemplates: jest.fn(() => ({
     headerTemplate: '<div></div>',
     footerTemplate: '<div></div>',
-  }),
+  })),
+  resolveHeaderBrand: (additionalData?: Record<string, unknown>) =>
+    additionalData?.headerBrand === 'lightwell' ? 'lightwell' : 'redhat',
 }));
 
 jest.mock('../common/store', () => ({
@@ -192,6 +195,76 @@ describe('generatePdf', () => {
     it('closes the page after success', async () => {
       await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
       expect(mockPage.close).toHaveBeenCalled();
+    });
+
+    it('uses Lightwell header branding when requested', async () => {
+      const { getHeaderAndFooterTemplates } = jest.requireMock(
+        '../server/render-template',
+      );
+      const fakeSvg = '<svg><circle r="10"/></svg>';
+      // First evaluate = error check (no error), second = logo extraction
+      mockPage.evaluate
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(fakeSvg);
+
+      await generatePdf(
+        makePdfRequest({ additionalData: { headerBrand: 'lightwell' } }),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(getHeaderAndFooterTemplates).toHaveBeenCalledWith(
+        'lightwell',
+        fakeSvg,
+      );
+      expect(mockPage.pdf).toHaveBeenCalledWith(
+        expect.objectContaining({
+          margin: {
+            top: '80px',
+            bottom: '54px',
+            left: '28px',
+            right: '28px',
+          },
+        }),
+      );
+    });
+
+    it('falls back to text-only Lightwell header when logo extraction returns null', async () => {
+      const { getHeaderAndFooterTemplates } = jest.requireMock(
+        '../server/render-template',
+      );
+      // First evaluate = error check (no error), second = logo extraction (null)
+      mockPage.evaluate
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(null);
+
+      await generatePdf(
+        makePdfRequest({ additionalData: { headerBrand: 'lightwell' } }),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(getHeaderAndFooterTemplates).toHaveBeenCalledWith(
+        'lightwell',
+        null,
+      );
+    });
+
+    it('keeps Red Hat header branding by default', async () => {
+      const { getHeaderAndFooterTemplates } = jest.requireMock(
+        '../server/render-template',
+      );
+
+      await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
+
+      expect(getHeaderAndFooterTemplates).toHaveBeenCalledWith('redhat', null);
+      expect(mockPage.pdf).toHaveBeenCalledWith(
+        expect.objectContaining({
+          margin: { top: '54px', bottom: '54px' },
+        }),
+      );
     });
 
     it('forwards auth header to same-origin (localhost) requests', async () => {

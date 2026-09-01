@@ -1,11 +1,17 @@
 import HeaderContainer from './HeaderContainer';
 import HeaderDate from './HeaderDate';
-import HeaderLogo from './HeaderLogo';
+import HeaderLogo, { HeaderBrand } from './HeaderLogo';
 
-const Header = () => {
+const Header = ({
+  brand = 'redhat',
+  logoSvg,
+}: {
+  brand?: HeaderBrand;
+  logoSvg?: string;
+}) => {
   return (
     <HeaderContainer>
-      <HeaderLogo />
+      <HeaderLogo brand={brand} logoSvg={logoSvg} />
       <HeaderDate />
     </HeaderContainer>
   );

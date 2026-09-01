@@ -24,7 +24,7 @@ RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/sr
  && npm prune --omit=dev
 
 # Stage 2: Runtime
-FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1785373147@sha256:a8b67d7c6a96e0aa229ba0e3b84045db98ce640291da088874dc5d67352132d2
+FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1786379734@sha256:1e5d113989add65cbc8b8623f740c8cdfd338a91ade5dc31e51608f86d041b0f
 
 USER 0
 WORKDIR /pdf-gen

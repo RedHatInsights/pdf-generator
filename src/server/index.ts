@@ -1,3 +1,17 @@
+import fs from 'fs';
+import sourceMapSupport from 'source-map-support';
+// hidden-source-map strips sourceMappingURL comments, so the default resolver
+// can't locate the map. Load it by convention: <source>.map.
+sourceMapSupport.install({
+  retrieveSourceMap(source) {
+    try {
+      const map = fs.readFileSync(`${source}.map`, 'utf8');
+      return { url: `${source}.map`, map };
+    } catch {
+      return null;
+    }
+  },
+});
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -22,19 +36,27 @@ import PdfCache from '../common/pdfCache';
 import { store, StoreType } from '../common/store/store';
 import { consumeMessages } from '../common/kafka';
 import { UPDATE_TOPIC } from '../browser/constants';
+import { blockSourceMaps } from './blockSourceMaps';
 
 const PORT = config?.webPort;
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.resolve(__dirname, '..', 'build')));
-app.use(express.static(path.resolve(__dirname, '../public')));
+app.use(
+  blockSourceMaps,
+  express.static(path.resolve(__dirname, '..', 'build')),
+);
+app.use(blockSourceMaps, express.static(path.resolve(__dirname, '../public')));
 app.use(cookieParser());
 app.use(httpContext.middleware);
 app.use(`${config?.APIPrefix}/v2/create`, identityMiddleware);
 app.use('/preview', identityMiddleware);
 app.use(requestLogger);
-router.use('/public', express.static(path.resolve(__dirname, './public')));
+router.use(
+  '/public',
+  blockSourceMaps,
+  express.static(path.resolve(__dirname, './public')),
+);
 app.use('/', router);
 
 PdfCache.getInstance();
