@@ -11,6 +11,13 @@
       ],
       "pinDigests": true,
       "groupName": "ubi9-nodejs base images"
+    },
+    {
+      "description": "Automerge npm minor and patch updates",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr"
     }
   ]
 }
