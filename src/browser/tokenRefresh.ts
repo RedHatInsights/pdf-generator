@@ -4,7 +4,9 @@ import { apiLogger, formatLogError } from '../common/logging';
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 
 export type RefreshResult =
-  { accessToken: string } | { error: 'permanent' | 'transient' } | null;
+  | { accessToken: string }
+  | { error: 'permanent' | 'transient' }
+  | null;
 
 function parseTokenExpiry(token: string): number | null {
   try {
