@@ -44,6 +44,7 @@ const serverConfig = {
   externals: {
     // puppeteer cannot be bundled via webpack. It will break the rendering. Pupetter will be loaded via node_modules even in prod version
     puppeteer: "require('puppeteer')",
+    'puppeteer-cluster': "require('puppeteer-cluster')",
   },
   module: {
     rules: [
