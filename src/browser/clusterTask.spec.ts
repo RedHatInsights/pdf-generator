@@ -2,6 +2,7 @@ import PdfCache, { PdfStatus } from '../common/pdfCache';
 import { generatePdf } from './clusterTask';
 import { PdfRequestBody } from '../common/types';
 import { TokenManager } from './tokenRefresh';
+import { PdfGenerationError } from '../server/errors';
 
 const mockPage = {
   setViewport: jest.fn(),
@@ -368,20 +369,44 @@ describe('generatePdf', () => {
     });
   });
 
-  describe('timeout failure', () => {
-    it('throws error without calling UpdateStatus(Failed) on page.goto timeout', async () => {
-      mockPage.goto.mockRejectedValue(
-        new Error('TimeoutError: Navigation timeout of 120000ms exceeded'),
-      );
+  describe('error wrapping', () => {
+    it('wraps non-PdfGenerationError in PdfGenerationError with collectionId and componentId', async () => {
+      mockPage.pdf.mockRejectedValue(new Error('pdf generation crashed'));
       const req = makePdfRequest();
-      initCollection('coll-timeout');
+      initCollection('coll-wrap');
 
-      await expect(
-        generatePdf(req, 'coll-timeout', 1, makeTokenManager()),
-      ).rejects.toThrow('timeout');
+      const error = await generatePdf(
+        req,
+        'coll-wrap',
+        1,
+        makeTokenManager(),
+      ).catch((e: unknown) => e);
 
-      // Only Generating status, no Failed
-      expect(UpdateStatus).toHaveBeenCalledTimes(1);
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      if (error instanceof PdfGenerationError) {
+        expect(error.collectionId).toBe('coll-wrap');
+        expect(error.componentId).toBe(req.uuid);
+        expect(error.message).toContain('pdf generation crashed');
+      }
+    });
+
+    it('does not double-wrap PdfGenerationError', async () => {
+      mockPage.evaluate.mockResolvedValue('Some render error');
+      const req = makePdfRequest();
+      initCollection('coll-no-double');
+
+      const error = await generatePdf(
+        req,
+        'coll-no-double',
+        1,
+        makeTokenManager(),
+      ).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      if (error instanceof PdfGenerationError) {
+        expect(error.message).toContain('Page render error');
+        expect(error.collectionId).toBe('coll-no-double');
+      }
     });
   });
 
