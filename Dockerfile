@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1786322791@sha256:1570ddcef13238ae41ee3f15334d079106c42bafb879c8fbe5a574cf6f15b79a AS builder
+FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1788329676@sha256:b0c5f09854f6d56eb8651290723f0a9cc088c00ce52d3597ad52eced0e50cda5 AS builder
 
 USER 0
 WORKDIR /pdf-gen
@@ -24,7 +24,7 @@ RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/sr
  && npm prune --omit=dev
 
 # Stage 2: Runtime
-FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1786379734@sha256:1e5d113989add65cbc8b8623f740c8cdfd338a91ade5dc31e51608f86d041b0f
+FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1788245048@sha256:dd2ef4164a4d155a002c431d185847bfe2c508d34afb1384c56be023bae3037e
 
 USER 0
 WORKDIR /pdf-gen
