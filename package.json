@@ -8,7 +8,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",
     "@openshift/dynamic-plugin-sdk": "^5.0.1",
-    "@quobix/vacuum": "^0.28.3",
     "@patternfly/patternfly": "^6.5.2",
     "pf-5-styles": "npm:@patternfly/patternfly@^5.4.2",
     "@scalprum/core": "^0.9.3",
@@ -55,6 +54,7 @@
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@redhat-cloud-services/eslint-config-redhat-cloud-services": "3.2.0",
+    "@quobix/vacuum": "^0.28.3",
     "@swc/core": "^1.15.40",
     "@types/atob": "^2.1.4",
     "@types/cookie-parser": "^1.4.10",
