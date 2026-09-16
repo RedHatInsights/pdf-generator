@@ -191,14 +191,34 @@ async function runPageTask(
         });
         const pageStatus = pageResponse?.status();
 
+        // A failed report does not always announce itself. When the page never
+        // mounts, the error elements below are never created either, so the only
+        // evidence is an empty #root — which used to print as a header/footer-only
+        // PDF and get reported Generated. Treat "nothing rendered" and "error
+        // element present but empty" as failures alongside a real error message.
         const error = await page.evaluate(() => {
+          const EMPTY_ERROR = 'error element rendered without a message';
+
           const appError = document.getElementById('crc-pdf-generator-err');
           if (appError) {
-            return appError.innerText;
+            return appError.innerText?.trim()
+              ? appError.innerText
+              : EMPTY_ERROR;
           }
           const templateError = document.getElementById('report-error');
           if (templateError) {
-            return templateError.innerText;
+            return templateError.innerText?.trim()
+              ? templateError.innerText
+              : EMPTY_ERROR;
+          }
+
+          // Structural, not textual: a chart-only report is legitimately text-free.
+          const root = document.getElementById('root');
+          const rendered =
+            !!root &&
+            (root.childElementCount > 0 || !!root.innerHTML?.trim().length);
+          if (!rendered) {
+            return 'the page rendered no content';
           }
         });
 

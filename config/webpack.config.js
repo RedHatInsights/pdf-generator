@@ -125,6 +125,12 @@ const moduleFederationPlugin = new container.ModuleFederationPlugin({
 const clientConfig = {
   name: 'client',
   target: 'web',
+  // webpack 5.108+ enables its built-in HTML module type by default, and its tag
+  // rewriter strips quotes from attribute values that are legal unquoted. The
+  // server injects state into the emitted index.html by matching a placeholder
+  // in it, so leaving this on breaks that contract (RHCLOUD-51334). The server
+  // side also tolerates either quoting now; this keeps the output stable.
+  experiments: { html: false },
   // Do not emit browser .map files in production — they would be HTTP-reachable
   // under /public even with hidden-source-map (guessable *.js.map URLs).
   ...(isProduction ? { devtool: false } : {}),
