@@ -16,6 +16,25 @@ import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
+import {
+  ComponentOutcome,
+  recordComponentOutcome,
+  recordGeneratedPdf,
+} from '../common/metrics';
+
+/**
+ * Returned from the page when it produced nothing a reader would recognise as a
+ * report. Passed into page.evaluate rather than duplicated inside it, so the
+ * browser-side literal and the node-side comparison cannot drift apart.
+ */
+export const BLANK_RENDER = 'the page rendered no content';
+export const EMPTY_ERROR_ELEMENT = 'error element rendered without a message';
+
+function outcomeFor(error: string): ComponentOutcome {
+  return error === BLANK_RENDER || error === EMPTY_ERROR_ELEMENT
+    ? ComponentOutcome.Blank
+    : ComponentOutcome.Failed;
+}
 
 const assetCache = new Map<string, { body: Buffer; contentType: string }>();
 
@@ -196,33 +215,36 @@ async function runPageTask(
         // evidence is an empty #root — which used to print as a header/footer-only
         // PDF and get reported Generated. Treat "nothing rendered" and "error
         // element present but empty" as failures alongside a real error message.
-        const error = await page.evaluate(() => {
-          const EMPTY_ERROR = 'error element rendered without a message';
+        const error = await page.evaluate(
+          (emptyError: string, blankRender: string) => {
+            const appError = document.getElementById('crc-pdf-generator-err');
+            if (appError) {
+              return appError.innerText?.trim()
+                ? appError.innerText
+                : emptyError;
+            }
+            const templateError = document.getElementById('report-error');
+            if (templateError) {
+              return templateError.innerText?.trim()
+                ? templateError.innerText
+                : emptyError;
+            }
 
-          const appError = document.getElementById('crc-pdf-generator-err');
-          if (appError) {
-            return appError.innerText?.trim()
-              ? appError.innerText
-              : EMPTY_ERROR;
-          }
-          const templateError = document.getElementById('report-error');
-          if (templateError) {
-            return templateError.innerText?.trim()
-              ? templateError.innerText
-              : EMPTY_ERROR;
-          }
-
-          // Structural, not textual: a chart-only report is legitimately text-free.
-          const root = document.getElementById('root');
-          const rendered =
-            !!root &&
-            (root.childElementCount > 0 || !!root.innerHTML?.trim().length);
-          if (!rendered) {
-            return 'the page rendered no content';
-          }
-        });
+            // Structural, not textual: a chart-only report is legitimately text-free.
+            const root = document.getElementById('root');
+            const rendered =
+              !!root &&
+              (root.childElementCount > 0 || !!root.innerHTML?.trim().length);
+            if (!rendered) {
+              return blankRender;
+            }
+          },
+          EMPTY_ERROR_ELEMENT,
+          BLANK_RENDER,
+        );
 
         if (error && error.length > 0) {
+          recordComponentOutcome(outcomeFor(error));
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let response: any;
           try {
@@ -299,6 +321,7 @@ async function runPageTask(
         const pdfDoc = await PDFDocument.load(buffer);
         const numPages = pdfDoc.getPages().length;
         apiLogger.debug(`Generated PDF with ${numPages} pages`);
+        recordGeneratedPdf(numPages, buffer.length);
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Generated,
@@ -314,6 +337,7 @@ async function runPageTask(
         if (taskError instanceof PdfGenerationError) {
           throw taskError;
         }
+        recordComponentOutcome(ComponentOutcome.Failed);
         throw new PdfGenerationError(collectionId, componentId, message);
       } finally {
         await page.close().catch(() => {});
