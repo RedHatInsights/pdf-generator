@@ -102,6 +102,21 @@ describe('getHeaderAndFooterTemplates', () => {
     }
   });
 
+  it('throws when a template has no content placeholder', () => {
+    // Directly pins the failure mode the assertions above only imply: a
+    // substitution that no longer matches must raise, not quietly return the
+    // template and render an empty header or footer.
+    const readFileSync = jest
+      .spyOn(fs, 'readFileSync')
+      .mockReturnValue('<html><body>no placeholder here</body></html>');
+
+    try {
+      expect(() => getHeaderAndFooterTemplates()).toThrow(/not found/);
+    } finally {
+      readFileSync.mockRestore();
+    }
+  });
+
   it('renders the Red Hat logo by default', () => {
     const result = getHeaderAndFooterTemplates();
 
