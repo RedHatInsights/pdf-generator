@@ -22,6 +22,24 @@ API_HOST=https://console.redhat.com npm run start:server
 
 This will redirect any API requests to the stage directly, and will use your browser auth headers. You can also point the proxy to your local API.
 
+## Running a production build locally
+
+Development builds do not minify the emitted `index.html`, so some defects only
+appear in a production build (see RHCLOUD-51334). To run one outside the
+production image, point `CHROMIUM_PATH` at a browser — otherwise startup fails
+with `unable to locate chromium executable`, because the default lookup only
+matches the Linux cache layout used in the image.
+
+```shell
+NODE_ENV=production npm run build
+CHROMIUM_PATH="$(node -e 'console.log(require("puppeteer").executablePath())')" \
+  MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin \
+  node dist/server.js
+```
+
+Note that `NODE_ENV` is baked in at build time, so a production bundle always
+behaves as production regardless of the runtime environment.
+
 ## Assets setup
 
 Because the PDF templates embedded into UI repositories, a UI needs to be run locally and some proxy setup needs to be done.
