@@ -14,7 +14,7 @@ module.exports = {
     '^.+\\.mjs$': ['ts-jest', { isolatedModules: true }],
   },
   transformIgnorePatterns: [
-    '(?<!http-proxy-middleware/)node_modules/(?!(pdf-merger-js|http-proxy-middleware|httpxy)/)',
+    '(?<!http-proxy-middleware/)node_modules/(?!(pdf-merger-js|http-proxy-middleware|httpxy|puppeteer|puppeteer-core|chromium-bidi|@puppeteer)/)',
   ],
   testMatch: ['./**/*.spec.ts'],
 };
