@@ -109,6 +109,7 @@
     "start:server": "NODE_ENV=development npx concurrently \"npx webpack -c ./config/webpack.config.js -w\" \"npm run serve\"",
     "test": "jest --config jest.config.js",
     "test:unit": "jest --config jest.config.js --testPathIgnorePatterns=\"integration\\.spec\\.ts\"",
+    "test:no-chromium": "jest --config jest.config.js --testPathIgnorePatterns=\"chromium\\.integration\\.spec\\.ts\"",
     "test:integration": "jest --config jest.config.js --testPathPattern=\"integration\\.spec\\.ts$\"",
     "api:validate": "npx vacuum lint  -d ./docs/openapi.json"
   },
