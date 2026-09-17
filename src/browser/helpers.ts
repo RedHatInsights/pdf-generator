@@ -26,19 +26,9 @@ function getChromiumExecutablePath() {
   }
 }
 
-/**
- * An explicit CHROMIUM_PATH wins over the glob above.
- *
- * Without it a production build only runs inside the production image, because
- * the glob matches the Linux cache layout alone — so `npm run build` followed by
- * `node dist/server.js` dies at import on any developer machine. That mattered:
- * RHCLOUD-51334 existed only in production builds (development builds do not
- * minify the emitted HTML), and being unable to run one locally is a large part
- * of why it reached stage unnoticed.
- */
-export const CHROMIUM_PATH =
-  config?.CHROMIUM_PATH ||
-  (config?.IS_PRODUCTION ? getChromiumExecutablePath() : undefined);
+export const CHROMIUM_PATH = config?.IS_PRODUCTION
+  ? getChromiumExecutablePath()
+  : undefined;
 
 const A4Width = 210;
 const A4Height = 297;

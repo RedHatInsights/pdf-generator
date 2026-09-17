@@ -49,9 +49,6 @@ docs/               # API docs, onboarding guides, OpenAPI spec
 ## Non-Negotiable Conventions
 
 1. **Tests co-located** — `src/foo/bar.ts` → `src/foo/bar.spec.ts`. Always `.spec.ts` suffix.
-   Integration tests use `.integration.spec.ts`. Tests that launch a real browser use
-   `.chromium.integration.spec.ts` — Konflux runs `npm run test:no-chromium` because its
-   unit-test task installs with `PUPPETEER_SKIP_DOWNLOAD=true` and has no browser.
 2. **Use npm scripts** — `npm test`, `npm run lint`, `npm run build`. Never call CLI tools directly.
 3. **Async/await** — always `await` async operations. Never fire-and-forget (e.g., `await pdfCache.verifyCollection()`).
 4. **Error serialization** — use `JSON.stringify(errorString)` not `JSON.stringify(error)`. Error objects stringify to `"{}"`.

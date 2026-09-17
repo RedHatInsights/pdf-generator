@@ -15,33 +15,6 @@ const cachedTemplates: Partial<
   Record<string, { headerTemplate: string; footerTemplate: string }>
 > = {};
 
-// These placeholders live in HTML produced elsewhere — a bundler for index.html,
-// files on disk for the header and footer — so they are not guaranteed to survive
-// a toolchain change. webpack 5.110 began emitting `<script id=initial-state>`
-// without quotes, and the exact-match replace below silently returned the input
-// unchanged: no injected state, a page that never mounted, and a blank PDF the
-// pipeline happily reported as Generated. Match either quoting, and fail loudly
-// when the placeholder is gone entirely.
-const INITIAL_STATE_PLACEHOLDER =
-  /<script id=["']?initial-state["']?\s*>\s*<\/script>/;
-const CONTENT_PLACEHOLDER = /<div id=["']?content["']?\s*>\s*<\/div>/;
-
-function substitutePlaceholder(
-  template: string,
-  placeholder: RegExp,
-  replacement: string,
-  source: string,
-): string {
-  if (!placeholder.test(template)) {
-    throw new Error(
-      `Placeholder ${String(placeholder)} not found in ${source} — refusing to render a document with no content`,
-    );
-  }
-  // Replacement passed as a function: the injected JSON can legitimately contain
-  // `$&`, `$'` and friends, which String.replace would otherwise expand.
-  return template.replace(placeholder, () => replacement);
-}
-
 export function getHeaderAndFooterTemplates(
   brand: HeaderBrand = 'redhat',
   lightwellSvg?: string | null,
@@ -72,19 +45,15 @@ export function getHeaderAndFooterTemplates(
   );
 
   const templates = {
-    headerTemplate: substitutePlaceholder(
-      headerBase,
-      CONTENT_PLACEHOLDER,
+    headerTemplate: headerBase.replace(
+      '<div id="content"></div>',
       renderToStaticMarkup(
         <Header brand={brand} logoSvg={lightwellSvg ?? undefined} />,
       ),
-      'public/templates/header-template.html',
     ),
-    footerTemplate: substitutePlaceholder(
-      footerBase,
-      CONTENT_PLACEHOLDER,
+    footerTemplate: footerBase.replace(
+      '<div id="content"></div>',
       renderToStaticMarkup(<Footer />),
-      'public/templates/footer-template.html',
     ),
   };
 
@@ -111,14 +80,14 @@ function renderTemplate(payload: GeneratePayload) {
     ]),
   );
 
-  return substitutePlaceholder(
-    baseTemplate,
-    INITIAL_STATE_PLACEHOLDER,
+  const template = baseTemplate.replace(
+    '<script id="initial-state"></script>',
     `<script id="initial-state">window.__initialState__ = ${safeJsonStringify(payload)};
 window.__endpoints__ = ${safeJsonStringify(endpointKeys)}
 window.IS_PRODUCTION = ${instanceConfig.IS_PRODUCTION}</script>`,
-    'dist/public/index.html',
   );
+
+  return template;
 }
 
 export default renderTemplate;

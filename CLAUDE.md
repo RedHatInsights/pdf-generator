@@ -18,9 +18,6 @@ npm test
 # Run specific test
 npm test -- --testPathPattern=<pattern>
 
-# Run everything except tests that need a real browser (what Konflux runs)
-npm run test:no-chromium
-
 # Lint
 npm run lint
 

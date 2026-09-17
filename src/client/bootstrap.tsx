@@ -14,7 +14,6 @@ import {
   IntegrationEndpointsMap,
 } from '../integration/endpoints';
 import { resolveInternalRouteKey } from '../common/integrationEndpoints';
-import FetchErrorFallback from './FetchErrorFallback';
 
 import 'react/jsx-runtime';
 import 'react-intl';
@@ -101,6 +100,28 @@ type AsyncState = {
   error: unknown;
   data: unknown;
 };
+
+function FetchErrorFallback({ error }: { error?: unknown }) {
+  let content = null;
+  try {
+    if (error instanceof Error) {
+      content = <div>{error.message}</div>;
+    } else if (typeof error === 'string') {
+      content = <div>{error}</div>;
+    } else if (
+      typeof error === 'object' &&
+      error !== null &&
+      typeof (error as any).message === 'string'
+    ) {
+      content = <div>{(error as any).message}</div>;
+    } else {
+      content = <div>{JSON.stringify(error, null, 2)}</div>;
+    }
+  } catch {
+    content = <div>Something went wrong</div>;
+  }
+  return <div id="crc-pdf-generator-err">{content}</div>;
+}
 
 const MetadataWrapper = () => {
   const [asyncState, setAsyncState] = useState<AsyncState>({

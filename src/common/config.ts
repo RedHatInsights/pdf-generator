@@ -33,7 +33,6 @@ const defaultConfig: {
   APIPrefix: string;
   IS_PRODUCTION: boolean;
   IS_DEVELOPMENT: boolean;
-  CHROMIUM_PATH?: string;
   OPTIONS_HEADER_NAME: string;
   IDENTITY_CONTEXT_KEY: string;
   IDENTITY_HEADER_KEY: string;
@@ -106,7 +105,6 @@ const defaultConfig: {
   APIPrefix: '/api/crc-pdf-generator',
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',
-  CHROMIUM_PATH: process.env.CHROMIUM_PATH || undefined,
   OPTIONS_HEADER_NAME: 'x-pdf-gen-options',
   IDENTITY_CONTEXT_KEY: 'identity',
   IDENTITY_HEADER_KEY: 'x-rh-identity',
