@@ -3,6 +3,10 @@ import { generatePdf } from './clusterTask';
 import { PdfRequestBody } from '../common/types';
 import { TokenManager } from './tokenRefresh';
 import { PdfGenerationError } from '../server/errors';
+// Metrics are deliberately not mocked: prom-client works in node, and the point
+// of these assertions is that the real counters move.
+import { register } from 'prom-client';
+import { ComponentOutcome, componentResultTotal } from '../common/metrics';
 
 const mockPage = {
   setViewport: jest.fn(),
@@ -90,6 +94,11 @@ jest.mock('pdf-lib', () => ({
 }));
 
 const { UpdateStatus } = jest.requireMock('../server/utils');
+
+async function outcomeCount(outcome: ComponentOutcome): Promise<number> {
+  const metric = await componentResultTotal.get();
+  return metric.values.find((v) => v.labels.outcome === outcome)?.value ?? 0;
+}
 
 function makePdfRequest(
   overrides: Partial<PdfRequestBody> = {},
@@ -849,16 +858,18 @@ describe('generatePdf', () => {
         },
         documentElement: { innerText: bodyText },
       };
-      mockPage.evaluate.mockImplementation(async (fn: () => unknown) => {
-        const globals = globalThis as { document?: unknown };
-        const previous = globals.document;
-        globals.document = document;
-        try {
-          return fn();
-        } finally {
-          globals.document = previous;
-        }
-      });
+      mockPage.evaluate.mockImplementation(
+        async (fn: (...args: unknown[]) => unknown, ...args: unknown[]) => {
+          const globals = globalThis as { document?: unknown };
+          const previous = globals.document;
+          globals.document = document;
+          try {
+            return fn(...args);
+          } finally {
+            globals.document = previous;
+          }
+        },
+      );
     }
 
     it('fails the component when the error element is present but empty', async () => {
@@ -942,6 +953,104 @@ describe('generatePdf', () => {
         expect.objectContaining({ status: PdfStatus.Generated }),
       );
       expect(store.uploadPDF).toHaveBeenCalled();
+    });
+
+    it('classifies a blank render without counting a retry attempt', async () => {
+      register.resetMetrics();
+      useFakeDom({ root: element('') });
+      initCollection('coll-metric-blank');
+
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-blank',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Blank,
+      );
+      await expect(outcomeCount(ComponentOutcome.Blank)).resolves.toBe(0);
+    });
+
+    it('classifies a real render error without counting a retry attempt', async () => {
+      register.resetMetrics();
+      mockPage.evaluate.mockResolvedValue(
+        'Request failed with status code 401',
+      );
+      initCollection('coll-metric-failed');
+
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-failed',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Failed,
+      );
+      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
+    });
+
+    it('classifies an invalid page response as failed before checking blank content', async () => {
+      mockPage.goto.mockResolvedValue({
+        status: () => 500,
+        statusText: () => 'Internal Server Error',
+      });
+      useFakeDom({ root: element('') });
+      initCollection('coll-metric-status');
+
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-status',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Failed,
+      );
+      expect(mockPage.evaluate).not.toHaveBeenCalled();
+    });
+
+    it('counts a successful render as generated', async () => {
+      register.resetMetrics();
+      useFakeDom({ root: element('<h1>Report</h1>', 'Report') });
+      initCollection('coll-metric-ok');
+
+      await generatePdf(
+        makePdfRequest(),
+        'coll-metric-ok',
+        1,
+        makeTokenManager(),
+      );
+
+      await expect(outcomeCount(ComponentOutcome.Generated)).resolves.toBe(1);
+    });
+
+    it('does not count generated before the terminal status update succeeds', async () => {
+      register.resetMetrics();
+      useFakeDom({ root: element('<h1>Report</h1>', 'Report') });
+      UpdateStatus.mockResolvedValueOnce(undefined).mockRejectedValueOnce(
+        new Error('status update failed'),
+      );
+      initCollection('coll-metric-status-failed');
+
+      await expect(
+        generatePdf(
+          makePdfRequest(),
+          'coll-metric-status-failed',
+          1,
+          makeTokenManager(),
+        ),
+      ).rejects.toThrow('status update failed');
+
+      await expect(outcomeCount(ComponentOutcome.Generated)).resolves.toBe(0);
+      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
     });
 
     it('generates normally for a chart-only report with no text', async () => {

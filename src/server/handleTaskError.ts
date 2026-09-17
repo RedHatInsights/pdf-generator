@@ -2,6 +2,7 @@ import { PdfGenerationError } from './errors';
 import { apiLogger } from '../common/logging';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
 import { UpdateStatus } from './utils';
+import { ComponentOutcome, recordComponentOutcome } from '../common/metrics';
 
 export async function handleTaskError(
   err: Error,
@@ -33,6 +34,9 @@ export async function handleTaskError(
   );
 
   if (componentId) {
+    recordComponentOutcome(
+      err instanceof PdfGenerationError ? err.outcome : ComponentOutcome.Failed,
+    );
     await UpdateStatus({
       collectionId,
       status: PdfStatus.Failed,

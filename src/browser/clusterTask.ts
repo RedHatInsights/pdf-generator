@@ -16,6 +16,21 @@ import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
+import { ComponentOutcome, recordGeneratedPdf } from '../common/metrics';
+
+/**
+ * Returned from the page when it produced nothing a reader would recognise as a
+ * report. Passed into page.evaluate rather than duplicated inside it, so the
+ * browser-side literal and the node-side comparison cannot drift apart.
+ */
+export const BLANK_RENDER = 'the page rendered no content';
+export const EMPTY_ERROR_ELEMENT = 'error element rendered without a message';
+
+function outcomeFor(error: string): ComponentOutcome {
+  return error === BLANK_RENDER || error === EMPTY_ERROR_ELEMENT
+    ? ComponentOutcome.Blank
+    : ComponentOutcome.Failed;
+}
 
 const assetCache = new Map<string, { body: Buffer; contentType: string }>();
 
@@ -190,37 +205,47 @@ async function runPageTask(
           idleTime: 1000,
         });
         const pageStatus = pageResponse?.status();
+        if (!pageStatus || !isValidPageResponse(pageStatus)) {
+          apiLogger.debug(`Page status: ${pageResponse?.statusText()}`);
+          throw new PdfGenerationError(
+            collectionId,
+            componentId,
+            `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
+          );
+        }
 
         // A failed report does not always announce itself. When the page never
         // mounts, the error elements below are never created either, so the only
         // evidence is an empty #root — which used to print as a header/footer-only
         // PDF and get reported Generated. Treat "nothing rendered" and "error
         // element present but empty" as failures alongside a real error message.
-        const error = await page.evaluate(() => {
-          const EMPTY_ERROR = 'error element rendered without a message';
+        const error = await page.evaluate(
+          (emptyError: string, blankRender: string) => {
+            const appError = document.getElementById('crc-pdf-generator-err');
+            if (appError) {
+              return appError.innerText?.trim()
+                ? appError.innerText
+                : emptyError;
+            }
+            const templateError = document.getElementById('report-error');
+            if (templateError) {
+              return templateError.innerText?.trim()
+                ? templateError.innerText
+                : emptyError;
+            }
 
-          const appError = document.getElementById('crc-pdf-generator-err');
-          if (appError) {
-            return appError.innerText?.trim()
-              ? appError.innerText
-              : EMPTY_ERROR;
-          }
-          const templateError = document.getElementById('report-error');
-          if (templateError) {
-            return templateError.innerText?.trim()
-              ? templateError.innerText
-              : EMPTY_ERROR;
-          }
-
-          // Structural, not textual: a chart-only report is legitimately text-free.
-          const root = document.getElementById('root');
-          const rendered =
-            !!root &&
-            (root.childElementCount > 0 || !!root.innerHTML?.trim().length);
-          if (!rendered) {
-            return 'the page rendered no content';
-          }
-        });
+            // Structural, not textual: a chart-only report is legitimately text-free.
+            const root = document.getElementById('root');
+            const rendered =
+              !!root &&
+              (root.childElementCount > 0 || !!root.innerHTML?.trim().length);
+            if (!rendered) {
+              return blankRender;
+            }
+          },
+          EMPTY_ERROR_ELEMENT,
+          BLANK_RENDER,
+        );
 
         if (error && error.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -236,14 +261,7 @@ async function runPageTask(
             collectionId,
             componentId,
             `Page render error: ${response}`,
-          );
-        }
-        if (!pageStatus || !isValidPageResponse(pageStatus)) {
-          apiLogger.debug(`Page status: ${pageResponse?.statusText()}`);
-          throw new PdfGenerationError(
-            collectionId,
-            componentId,
-            `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
+            outcomeFor(error),
           );
         }
 
@@ -307,6 +325,7 @@ async function runPageTask(
           numPages,
           order,
         });
+        recordGeneratedPdf(numPages, buffer.length);
       } catch (taskError: unknown) {
         const message =
           taskError instanceof Error ? taskError.message : String(taskError);
