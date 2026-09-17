@@ -1,6 +1,8 @@
 import PdfCache, { PdfStatus } from '../common/pdfCache';
 import { PdfGenerationError } from './errors';
 import { handleTaskError } from './handleTaskError';
+import { register } from 'prom-client';
+import { ComponentOutcome, componentResultTotal } from '../common/metrics';
 
 jest.mock('../common/logging', () => ({
   apiLogger: {
@@ -17,9 +19,15 @@ jest.mock('./utils', () => ({
 
 const { UpdateStatus } = jest.requireMock('./utils');
 
+async function outcomeCount(outcome: ComponentOutcome): Promise<number> {
+  const metric = await componentResultTotal.get();
+  return metric.values.find((v) => v.labels.outcome === outcome)?.value ?? 0;
+}
+
 describe('handleTaskError', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    register.resetMetrics();
   });
 
   it('does not mark a component as Failed when the task will be retried', async () => {
@@ -34,6 +42,7 @@ describe('handleTaskError', () => {
     );
 
     expect(UpdateStatus).not.toHaveBeenCalled();
+    await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
   });
 
   it('extracts collectionId and componentId from data and calls UpdateStatus(Failed)', async () => {
@@ -51,6 +60,26 @@ describe('handleTaskError', () => {
       order: 2,
       error: 'task failed',
     });
+    await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(1);
+  });
+
+  it('records a classified blank outcome only after retries are exhausted', async () => {
+    await handleTaskError(
+      new PdfGenerationError(
+        'coll-blank',
+        'comp-blank',
+        'blank render',
+        ComponentOutcome.Blank,
+      ),
+      {
+        collectionId: 'coll-blank',
+        componentId: 'comp-blank',
+        order: 1,
+      },
+    );
+
+    await expect(outcomeCount(ComponentOutcome.Blank)).resolves.toBe(1);
+    await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
   });
 
   it('falls back to PdfGenerationError when data is undefined', async () => {

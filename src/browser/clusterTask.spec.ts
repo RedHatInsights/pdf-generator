@@ -955,44 +955,66 @@ describe('generatePdf', () => {
       expect(store.uploadPDF).toHaveBeenCalled();
     });
 
-    it('counts a blank render as blank, not as a generic failure', async () => {
-      // The alert that would have caught RHCLOUD-51334 keys off this label, so
-      // a blank page must not be filed under the same outcome as a render error.
+    it('classifies a blank render without counting a retry attempt', async () => {
       register.resetMetrics();
       useFakeDom({ root: element('') });
       initCollection('coll-metric-blank');
 
-      await expect(
-        generatePdf(
-          makePdfRequest(),
-          'coll-metric-blank',
-          1,
-          makeTokenManager(),
-        ),
-      ).rejects.toThrow();
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-blank',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
 
-      await expect(outcomeCount(ComponentOutcome.Blank)).resolves.toBe(1);
-      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Blank,
+      );
+      await expect(outcomeCount(ComponentOutcome.Blank)).resolves.toBe(0);
     });
 
-    it('counts a real render error as failed, not as blank', async () => {
+    it('classifies a real render error without counting a retry attempt', async () => {
       register.resetMetrics();
       mockPage.evaluate.mockResolvedValue(
         'Request failed with status code 401',
       );
       initCollection('coll-metric-failed');
 
-      await expect(
-        generatePdf(
-          makePdfRequest(),
-          'coll-metric-failed',
-          1,
-          makeTokenManager(),
-        ),
-      ).rejects.toThrow();
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-failed',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
 
-      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(1);
-      await expect(outcomeCount(ComponentOutcome.Blank)).resolves.toBe(0);
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Failed,
+      );
+      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
+    });
+
+    it('classifies an invalid page response as failed before checking blank content', async () => {
+      mockPage.goto.mockResolvedValue({
+        status: () => 500,
+        statusText: () => 'Internal Server Error',
+      });
+      useFakeDom({ root: element('') });
+      initCollection('coll-metric-status');
+
+      const error = await generatePdf(
+        makePdfRequest(),
+        'coll-metric-status',
+        1,
+        makeTokenManager(),
+      ).catch((reason: unknown) => reason);
+
+      expect(error).toBeInstanceOf(PdfGenerationError);
+      expect((error as PdfGenerationError).outcome).toBe(
+        ComponentOutcome.Failed,
+      );
+      expect(mockPage.evaluate).not.toHaveBeenCalled();
     });
 
     it('counts a successful render as generated', async () => {
@@ -1008,6 +1030,27 @@ describe('generatePdf', () => {
       );
 
       await expect(outcomeCount(ComponentOutcome.Generated)).resolves.toBe(1);
+    });
+
+    it('does not count generated before the terminal status update succeeds', async () => {
+      register.resetMetrics();
+      useFakeDom({ root: element('<h1>Report</h1>', 'Report') });
+      UpdateStatus.mockResolvedValueOnce(undefined).mockRejectedValueOnce(
+        new Error('status update failed'),
+      );
+      initCollection('coll-metric-status-failed');
+
+      await expect(
+        generatePdf(
+          makePdfRequest(),
+          'coll-metric-status-failed',
+          1,
+          makeTokenManager(),
+        ),
+      ).rejects.toThrow('status update failed');
+
+      await expect(outcomeCount(ComponentOutcome.Generated)).resolves.toBe(0);
+      await expect(outcomeCount(ComponentOutcome.Failed)).resolves.toBe(0);
     });
 
     it('generates normally for a chart-only report with no text', async () => {

@@ -16,11 +16,7 @@ import { Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
-import {
-  ComponentOutcome,
-  recordComponentOutcome,
-  recordGeneratedPdf,
-} from '../common/metrics';
+import { ComponentOutcome, recordGeneratedPdf } from '../common/metrics';
 
 /**
  * Returned from the page when it produced nothing a reader would recognise as a
@@ -209,6 +205,14 @@ async function runPageTask(
           idleTime: 1000,
         });
         const pageStatus = pageResponse?.status();
+        if (!pageStatus || !isValidPageResponse(pageStatus)) {
+          apiLogger.debug(`Page status: ${pageResponse?.statusText()}`);
+          throw new PdfGenerationError(
+            collectionId,
+            componentId,
+            `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
+          );
+        }
 
         // A failed report does not always announce itself. When the page never
         // mounts, the error elements below are never created either, so the only
@@ -244,7 +248,6 @@ async function runPageTask(
         );
 
         if (error && error.length > 0) {
-          recordComponentOutcome(outcomeFor(error));
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let response: any;
           try {
@@ -258,14 +261,7 @@ async function runPageTask(
             collectionId,
             componentId,
             `Page render error: ${response}`,
-          );
-        }
-        if (!pageStatus || !isValidPageResponse(pageStatus)) {
-          apiLogger.debug(`Page status: ${pageResponse?.statusText()}`);
-          throw new PdfGenerationError(
-            collectionId,
-            componentId,
-            `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
+            outcomeFor(error),
           );
         }
 
@@ -321,7 +317,6 @@ async function runPageTask(
         const pdfDoc = await PDFDocument.load(buffer);
         const numPages = pdfDoc.getPages().length;
         apiLogger.debug(`Generated PDF with ${numPages} pages`);
-        recordGeneratedPdf(numPages, buffer.length);
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Generated,
@@ -330,6 +325,7 @@ async function runPageTask(
           numPages,
           order,
         });
+        recordGeneratedPdf(numPages, buffer.length);
       } catch (taskError: unknown) {
         const message =
           taskError instanceof Error ? taskError.message : String(taskError);
@@ -337,7 +333,6 @@ async function runPageTask(
         if (taskError instanceof PdfGenerationError) {
           throw taskError;
         }
-        recordComponentOutcome(ComponentOutcome.Failed);
         throw new PdfGenerationError(collectionId, componentId, message);
       } finally {
         await page.close().catch(() => {});

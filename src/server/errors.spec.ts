@@ -5,6 +5,7 @@ import {
   PDFRequestError,
   PdfGenerationError,
 } from './errors';
+import { ComponentOutcome } from '../common/metrics';
 
 describe('Error classes', () => {
   it.each([
@@ -46,6 +47,7 @@ describe('Error classes', () => {
     expect(error.collectionId).toBe('col-1');
     expect(error.componentId).toBe('comp-1');
     expect(error.message).toBe('render failed');
+    expect(error.outcome).toBe(ComponentOutcome.Failed);
   });
 
   it('error.message is accessible for logging (not swallowed by JSON.stringify)', () => {

@@ -1,3 +1,5 @@
+import { ComponentOutcome } from '../common/metrics';
+
 export class PDFNotImplementedError extends Error {
   code: number;
   constructor() {
@@ -37,11 +39,18 @@ export class PDFRequestError extends Error {
 export class PdfGenerationError extends Error {
   collectionId: string;
   componentId: string;
+  outcome: ComponentOutcome;
 
-  constructor(collectionId: string, componentId: string, message: string) {
+  constructor(
+    collectionId: string,
+    componentId: string,
+    message: string,
+    outcome = ComponentOutcome.Failed,
+  ) {
     super(message);
     this.collectionId = collectionId;
     this.componentId = componentId;
+    this.outcome = outcome;
     this.name = 'PdfGenerationError';
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, this.constructor); // Capture the stack trace
