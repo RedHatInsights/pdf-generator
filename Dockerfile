@@ -18,7 +18,7 @@ COPY . .
 
 # Download pinned Chrome, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npx @puppeteer/browsers install chrome@151.0.7922.72 --path /opt/app-root/src/.cache/puppeteer \
+RUN npx @puppeteer/browsers install chrome@153.0.8010.47 --path /opt/app-root/src/.cache/puppeteer \
  && node circular.js \
  && npm run build \
  && npm prune --omit=dev
@@ -31,13 +31,14 @@ WORKDIR /pdf-gen
 
 # Install Chrome runtime dependencies and strip base-image npm/nodemon
 # (not needed at runtime; their vulnerable transitive deps trigger grype)
-RUN microdnf install -y bzip2 fontconfig pango \
+RUN microdnf update -y \
+ && microdnf install -y bzip2 fontconfig pango \
   libXcomposite libXcursor libXdamage \
   libXext libXi libXtst cups-libs \
   libXrandr alsa-lib \
   atk gtk3 libdrm mesa-libgbm libxshmfence \
   nss && microdnf clean all \
- && rm -rf /usr/lib/node_modules /usr/bin/npm /usr/bin/npx /usr/bin/nodemon
+ && rm -rf /usr/lib/node_modules /usr/lib/node_modules_22 /usr/bin/npm /usr/bin/npx /usr/bin/nodemon
 
 # Copy application artifacts from builder
 COPY --chown=1001:0 --from=builder /pdf-gen/dist ./dist

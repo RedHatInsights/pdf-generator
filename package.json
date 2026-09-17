@@ -7,11 +7,11 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1058.0",
-    "@openshift/dynamic-plugin-sdk": "^5.0.1",
+    "@openshift/dynamic-plugin-sdk": "^8.2.0",
     "@patternfly/patternfly": "^6.5.2",
     "pf-5-styles": "npm:@patternfly/patternfly@^5.4.2",
-    "@scalprum/core": "^0.9.3",
-    "@scalprum/react-core": "^0.11.3",
+    "@scalprum/core": "0.10.2",
+    "@scalprum/react-core": "0.13.2",
     "@smithy/node-http-handler": "^3.3.3",
     "@types/lodash": "^4.17.24",
     "@types/node-fetch": "^2.6.13",
@@ -25,7 +25,7 @@
     "cross-spawn": "^7.0.6",
     "dotenv": "^16.6.1",
     "encoding": "^0.1.13",
-    "express": "^4.22.2",
+    "express": "^4.22.3",
     "express-http-context": "^1.2.5",
     "express-prom-bundle": "^7.0.2",
     "express-winston": "^4.2.0",
@@ -50,6 +50,11 @@
     "utf-8-validate": "^6.0.6",
     "web-vitals": "^3.5.2",
     "winston": "^3.19.0"
+  },
+  "overrides": {
+    "@openshift/dynamic-plugin-sdk": {
+      "uuid": "11.1.1"
+    }
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
