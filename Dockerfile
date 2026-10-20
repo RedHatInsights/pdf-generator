@@ -4,21 +4,40 @@ FROM registry.access.redhat.com/ubi10/nodejs-22:10.2-1788329676@sha256:b0c5f0985
 USER 0
 WORKDIR /pdf-gen
 
-# Install build tools for native npm modules (node-gyp)
-RUN mkdir -p bin \
- && dnf install -y python3 make gcc-c++ git \
- && dnf clean all
+# Install build tools for native npm modules (node-gyp).
+# Skipped in hermetic mode: --ignore-scripts uses prebuilt binaries instead.
+RUN if [ ! -f /cachi2/cachi2.env ]; then \
+      mkdir -p bin \
+      && dnf install -y python3 make gcc-c++ git \
+      && dnf clean all; \
+    fi
 
 # Install npm dependencies from lockfile — separate layer so code changes don't bust npm cache
 COPY package*.json ./
-RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
+RUN if [ -f /cachi2/cachi2.env ]; then \
+      . /cachi2/cachi2.env \
+      && PUPPETEER_SKIP_DOWNLOAD=true npm ci --ignore-scripts --offline --no-audit --no-fund; \
+    else \
+      PUPPETEER_SKIP_DOWNLOAD=true npm ci; \
+    fi
 
 # Copy source after dependency install
 COPY . .
 
 # Download pinned Chrome, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npx @puppeteer/browsers install chrome@153.0.8010.47 --path /opt/app-root/src/.cache/puppeteer \
+RUN if [ -d /cachi2/output/deps/generic ]; then \
+      # Hermetic mode: extract Chrome from prefetched generic artifact using yauzl
+      mkdir -p /opt/app-root/src/.cache/puppeteer/chrome/linux-153.0.8010.47 \
+      && node --input-type=module -e " \
+           import {unpackArchive} from '@puppeteer/browsers/lib/fileUtil.js'; \
+           await unpackArchive('/cachi2/output/deps/generic/chrome-linux64.zip', \
+             '/opt/app-root/src/.cache/puppeteer/chrome/linux-153.0.8010.47'); \
+         " \
+      && echo 'Chrome extracted from prefetched archive'; \
+    else \
+      npx @puppeteer/browsers install chrome@153.0.8010.47 --path /opt/app-root/src/.cache/puppeteer; \
+    fi \
  && node circular.js \
  && npm run build \
  && npm prune --omit=dev
@@ -29,9 +48,10 @@ FROM registry.access.redhat.com/ubi10/nodejs-22-minimal:10.2-1788245048@sha256:d
 USER 0
 WORKDIR /pdf-gen
 
-# Install Chrome runtime dependencies and strip base-image npm/nodemon
+# Install Chrome runtime dependencies and strip base-image npm/nodemon.
 # (not needed at runtime; their vulnerable transitive deps trigger grype)
-RUN microdnf update -y \
+# In hermetic mode, RPM repos are injected by cachi2 — microdnf resolves locally.
+RUN if [ ! -f /cachi2/cachi2.env ]; then microdnf update -y; fi \
  && microdnf install -y bzip2 fontconfig pango \
   libXcomposite libXcursor libXdamage \
   libXext libXi libXtst cups-libs \

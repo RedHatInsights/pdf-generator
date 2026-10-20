@@ -24,6 +24,10 @@ spec:
     value: quay.io/redhat-user-workloads/hcc-platex-services-tenant/pdf-generator/pdf-generator:{{revision}}
   - name: dockerfile
     value: /Dockerfile
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[{"type":"npm","path":"."},{"type":"generic","path":".","lockfile":"artifacts.lock.yaml"},{"type":"rpm","path":"."}]'
   - name: unit-tests-script
     value: |
       #!/bin/bash
@@ -54,7 +58,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 1Gi
+            storage: 5Gi
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'

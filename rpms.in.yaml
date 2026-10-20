@@ -1,0 +1,39 @@
+# RPM lockfile input for Konflux hermetic builds.
+# Lists RPM packages needed by the Dockerfile runtime stage.
+#
+# Generate the resolved rpms.lock.yaml using rpm-lockfile-prototype:
+#   pip install git+https://github.com/konflux-ci/rpm-lockfile-prototype.git
+#   rpm-lockfile-prototype --arch x86_64 --outfile rpms.lock.yaml rpms.in.yaml
+#
+# The builder stage does NOT need RPMs when building hermetically
+# (native modules use prebuilt binaries via --ignore-scripts).
+contentOrigin:
+  repos:
+    - repoid: ubi-10-for-x86_64-baseos-rpms
+      baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/
+    - repoid: ubi-10-for-x86_64-appstream-rpms
+      baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/
+packages:
+  # Chrome runtime dependencies (needed by Puppeteer headless Chrome)
+  - bzip2
+  - fontconfig
+  - pango
+  - libXcomposite
+  - libXcursor
+  - libXdamage
+  - libXext
+  - libXi
+  - libXtst
+  - cups-libs
+  - libXrandr
+  - alsa-lib
+  - atk
+  - gtk3
+  - libdrm
+  - mesa-libgbm
+  - libxshmfence
+  - nss
+arches:
+  - x86_64
+context:
+  bare: true
