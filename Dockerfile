@@ -18,7 +18,7 @@ COPY . .
 
 # Download pinned Chrome, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npx @puppeteer/browsers install chrome@153.0.8010.47 --path /opt/app-root/src/.cache/puppeteer \
+RUN npx @puppeteer/browsers install chrome@157.0.8103.38 --path /opt/app-root/src/.cache/puppeteer \
  && node circular.js \
  && npm run build \
  && npm prune --omit=dev
