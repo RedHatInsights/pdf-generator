@@ -311,6 +311,10 @@ async function runPageTask(
           displayHeaderFooter: true,
           headerTemplate,
           footerTemplate,
+          // Puppeteer defaults to tagged: true. The merge in pdfCache drops the
+          // structure tree, so tags never reach users; building them only
+          // costs render time, memory and file size. Output looks identical.
+          tagged: false,
           timeout: BROWSER_TIMEOUT,
         });
         await store.uploadPDF(componentId, pdfPath);

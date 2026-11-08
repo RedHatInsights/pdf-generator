@@ -206,6 +206,22 @@ describe('generatePdf', () => {
       expect(mockPage.close).toHaveBeenCalled();
     });
 
+    it.each([
+      ['Red Hat', undefined],
+      ['Lightwell', { headerBrand: 'lightwell' }],
+    ])('prints untagged PDFs for %s branding', async (_, additionalData) => {
+      await generatePdf(
+        makePdfRequest(additionalData ? { additionalData } : {}),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(mockPage.pdf).toHaveBeenCalledWith(
+        expect.objectContaining({ tagged: false }),
+      );
+    });
+
     it('uses Lightwell header branding when requested', async () => {
       const { getHeaderAndFooterTemplates } = jest.requireMock(
         '../server/render-template',

@@ -177,6 +177,7 @@ describe('previewPdf', () => {
           headerTemplate: '<div>header</div>',
           footerTemplate: '<div>footer</div>',
           margin: { top: '54px', bottom: '54px' },
+          tagged: false,
           timeout: 120_000,
         }),
       );
