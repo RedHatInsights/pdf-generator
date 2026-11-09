@@ -62,6 +62,8 @@ const previewPdf = async (url: string): Promise<Buffer> => {
         displayHeaderFooter: true,
         headerTemplate,
         footerTemplate,
+        // Match /v2/create (see clusterTask.ts) so previews render the same way.
+        tagged: false,
         margin: {
           top: '54px',
           bottom: '54px',
