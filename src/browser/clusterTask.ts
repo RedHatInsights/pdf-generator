@@ -201,9 +201,6 @@ async function runPageTask(
           waitUntil: 'networkidle2',
           timeout: BROWSER_TIMEOUT,
         });
-        await page.waitForNetworkIdle({
-          idleTime: 1000,
-        });
         const pageStatus = pageResponse?.status();
         if (!pageStatus || !isValidPageResponse(pageStatus)) {
           apiLogger.debug(`Page status: ${pageResponse?.statusText()}`);

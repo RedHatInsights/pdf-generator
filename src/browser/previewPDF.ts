@@ -49,11 +49,6 @@ const previewPdf = async (url: string): Promise<Buffer> => {
         );
       }
 
-      await page.waitForNetworkIdle({
-        idleTime: 1000,
-        timeout: BROWSER_TIMEOUT,
-      });
-
       const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
 
       return await page.pdf({

@@ -107,7 +107,7 @@ describe('previewPdf', () => {
   });
 
   describe('status check ordering', () => {
-    it('checks page status BEFORE network idle and PDF', async () => {
+    it('checks page status BEFORE generating the PDF', async () => {
       const callOrder: string[] = [];
       mockPage.goto.mockImplementation(() => {
         callOrder.push('goto');
@@ -136,13 +136,14 @@ describe('previewPdf', () => {
   });
 
   describe('network idle', () => {
-    it('waits for network idle after successful navigation', async () => {
+    it('relies on networkidle2 and does not add a second idle wait', async () => {
       await previewPdf(TEST_URL);
 
-      expect(mockPage.waitForNetworkIdle).toHaveBeenCalledWith({
-        idleTime: 1000,
-        timeout: 120_000,
-      });
+      expect(mockPage.goto).toHaveBeenCalledWith(
+        TEST_URL,
+        expect.objectContaining({ waitUntil: 'networkidle2' }),
+      );
+      expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
     });
   });
 
