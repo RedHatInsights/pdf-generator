@@ -102,5 +102,12 @@ export default defineConfig(
       '@typescript-eslint/require-await': 'off',
       'react/react-in-jsx-scope': 'off',
     },
+  },
+  {
+    files: ['./src/**/*.spec.ts', './src/**/*.spec.tsx'],
+
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+    },
   }
 );
