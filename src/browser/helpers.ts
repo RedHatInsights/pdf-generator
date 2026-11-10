@@ -17,7 +17,7 @@ export const sanitizeFilepath = (input: string) => {
 function getChromiumExecutablePath() {
   const home = process.env.HOME || '/root';
   const paths = glob.sync(
-    `${home}/.cache/puppeteer/chrome/*/chrome-linux64/chrome`,
+    `${home}/.cache/puppeteer/chrome-headless-shell/*/chrome-headless-shell-linux64/chrome-headless-shell`,
   );
   if (paths.length > 0) {
     return paths[0];

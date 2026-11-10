@@ -17,6 +17,10 @@ export const GetPupCluster = async () => {
     retryLimit: 2,
     timeout: BROWSER_TIMEOUT,
     puppeteerOptions: {
+      // chrome-headless-shell: same Blink/print engine as full Chrome, without
+      // the desktop-browser layers, so less memory and faster startup. It is
+      // the old headless mode this service ran on before Puppeteer 22.
+      headless: 'shell',
       timeout: BROWSER_TIMEOUT,
       ...(config?.IS_PRODUCTION
         ? {

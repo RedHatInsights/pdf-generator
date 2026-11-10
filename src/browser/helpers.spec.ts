@@ -28,11 +28,16 @@ describe('CHROMIUM_PATH', () => {
     expect(loadHelpers({ isProduction: false }).CHROMIUM_PATH).toBeUndefined();
   });
 
-  it('locates the browser in the production image', () => {
-    mockGlobSync.mockReturnValue(['/found/chrome-linux64/chrome']);
+  it('locates chrome-headless-shell in the production image', () => {
+    const shell = '/found/chrome-headless-shell-linux64/chrome-headless-shell';
+    mockGlobSync.mockReturnValue([shell]);
 
-    expect(loadHelpers({ isProduction: true }).CHROMIUM_PATH).toBe(
-      '/found/chrome-linux64/chrome',
+    expect(loadHelpers({ isProduction: true }).CHROMIUM_PATH).toBe(shell);
+    // The Dockerfile installs chrome-headless-shell, not full Chrome.
+    expect(mockGlobSync).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\/\.cache\/puppeteer\/chrome-headless-shell\/\*\/chrome-headless-shell-linux64\/chrome-headless-shell$/,
+      ),
     );
   });
 
@@ -43,7 +48,9 @@ describe('CHROMIUM_PATH', () => {
   });
 
   it('prefers an explicit CHROMIUM_PATH over the image layout', () => {
-    mockGlobSync.mockReturnValue(['/found/chrome-linux64/chrome']);
+    mockGlobSync.mockReturnValue([
+      '/found/chrome-headless-shell-linux64/chrome-headless-shell',
+    ]);
 
     expect(
       loadHelpers({ isProduction: true, chromiumPath: '/explicit/chrome' })

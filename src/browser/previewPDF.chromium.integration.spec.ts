@@ -206,8 +206,10 @@ function paintedCharacters(pdf: Buffer): Set<string> {
 }
 
 beforeAll(async () => {
-  // Same flags as src/server/cluster.ts, so the printing path matches production.
+  // Same browser and flags as src/server/cluster.ts, so the printing path
+  // matches production.
   mockBrowser = await puppeteer.launch({
+    headless: 'shell',
     args: [
       '--no-sandbox',
       '--disable-gpu',

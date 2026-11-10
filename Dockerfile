@@ -16,9 +16,9 @@ RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
 # Copy source after dependency install
 COPY . .
 
-# Download pinned Chrome, validate build, produce production bundle
+# Download pinned chrome-headless-shell, validate build, produce production bundle
 ENV NODE_ENV=production
-RUN npx @puppeteer/browsers install chrome@156.0.8078.47 --path /opt/app-root/src/.cache/puppeteer \
+RUN npx @puppeteer/browsers install chrome-headless-shell@156.0.8078.47 --path /opt/app-root/src/.cache/puppeteer \
  && node circular.js \
  && npm run build \
  && npm prune --omit=dev
@@ -47,7 +47,7 @@ COPY --chown=1001:0 --from=builder /pdf-gen/package.json ./package.json
 COPY --chown=1001:0 --from=builder /pdf-gen/public ./public
 COPY --chown=1001:0 --from=builder /pdf-gen/docs/openapi.json ./docs/openapi.json
 
-# Copy Chrome binary
+# Copy chrome-headless-shell binary
 COPY --chown=1001:0 --from=builder /opt/app-root/src/.cache/puppeteer /opt/app-root/src/.cache/puppeteer
 
 ENV HOME=/opt/app-root/src
