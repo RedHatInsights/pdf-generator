@@ -2,4 +2,17 @@ import 'pf-5-styles/patternfly.min.css';
 import 'pf-5-styles/patternfly-addons.css';
 import '@patternfly/patternfly/patternfly.min.css';
 import '@patternfly/patternfly/patternfly-addons.css';
-import('./bootstrap');
+import { markPdfPending, markPdfReady, trackNetworkRequests } from './pdfReady';
+
+// Tell the generator this page reports its own readiness (see pdfReady.ts).
+markPdfPending();
+// Count XHR/fetch requests from the start so template data fetches hold off
+// the ready signal.
+trackNetworkRequests();
+
+import('./bootstrap').catch((error) => {
+  // If the app cannot even start, let the generator's blank/error checks fail
+  // the report now rather than waiting out the browser timeout.
+  console.error('[crc-pdf-generator] failed to start the report app', error);
+  markPdfReady();
+});

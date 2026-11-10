@@ -43,6 +43,15 @@ const SENTINEL = 'QZJXKVW';
 const PAGES: Record<string, string> = {
   '/blank': '<!doctype html><html><body></body></html>',
   '/content': `<!doctype html><html><body><h1>${SENTINEL}</h1><p>${SENTINEL} must be printed.</p></body></html>`,
+  // Renders its content well after load with no network activity, then signals
+  // ready. A network-idle wait would print it blank; the readiness flag must not.
+  '/late': `<!doctype html><html><body><script>
+    window.__PDF_READY__ = false;
+    setTimeout(() => {
+      document.body.innerHTML = '<h1>${SENTINEL}</h1><p>${SENTINEL} rendered late.</p>';
+      window.__PDF_READY__ = true;
+    }, 1500);
+  </script></body></html>`,
 };
 
 const PAYLOAD = {
@@ -286,6 +295,15 @@ describe('previewPdf against real Chromium', () => {
     }
   }, 180000);
 
+  it('waits for the page readiness flag before printing', async () => {
+    const late = await previewPdf(`${origin}/late`);
+
+    const painted = paintedCharacters(late);
+    for (const character of SENTINEL) {
+      expect(painted.has(character)).toBe(true);
+    }
+  }, 180000);
+
   /**
    * The end-to-end form of the incident: real production client bundle, real
    * renderTemplate, real browser. Asserts the state survives the whole path
@@ -315,6 +333,15 @@ describe('previewPdf against real Chromium', () => {
           '',
       );
       expect(reported).not.toBe('');
+
+      // The client must mark the page ready on its error path too, or the
+      // generator would wait out the browser timeout before failing the report.
+      await page.waitForFunction(
+        () =>
+          (window as unknown as { __PDF_READY__?: boolean }).__PDF_READY__ ===
+          true,
+        { timeout: 30000 },
+      );
     } finally {
       await page.close();
     }

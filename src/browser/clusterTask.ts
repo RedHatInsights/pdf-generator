@@ -17,6 +17,7 @@ import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
 import { ComponentOutcome, recordGeneratedPdf } from '../common/metrics';
+import { waitForPageReady } from './pageReady';
 
 /**
  * Returned from the page when it produced nothing a reader would recognise as a
@@ -197,8 +198,10 @@ async function runPageTask(
           }
         });
 
+        // Don't wait for the network to go quiet: the page signals when the
+        // report has rendered (waitForPageReady, after the status check).
         const pageResponse = await page.goto(url, {
-          waitUntil: 'networkidle2',
+          waitUntil: 'domcontentloaded',
           timeout: BROWSER_TIMEOUT,
         });
         const pageStatus = pageResponse?.status();
@@ -210,6 +213,8 @@ async function runPageTask(
             `Puppeteer error while loading the react app: ${pageResponse?.statusText()}`,
           );
         }
+
+        await waitForPageReady(page);
 
         // A failed report does not always announce itself. When the page never
         // mounts, the error elements below are never created either, so the only

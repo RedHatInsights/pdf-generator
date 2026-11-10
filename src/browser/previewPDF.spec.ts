@@ -3,6 +3,7 @@ const mockPage = {
   on: jest.fn(),
   goto: jest.fn().mockResolvedValue({ ok: () => true, statusText: () => 'OK' }),
   waitForNetworkIdle: jest.fn(),
+  waitForFunction: jest.fn().mockResolvedValue(true),
   setExtraHTTPHeaders: jest.fn(),
   setCookie: jest.fn(),
   pdf: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('%PDF-mock'))),
@@ -107,7 +108,7 @@ describe('previewPdf', () => {
   });
 
   describe('status check ordering', () => {
-    it('checks page status BEFORE generating the PDF', async () => {
+    it('checks page status BEFORE waiting for readiness or the PDF', async () => {
       const callOrder: string[] = [];
       mockPage.goto.mockImplementation(() => {
         callOrder.push('goto');
@@ -120,6 +121,10 @@ describe('previewPdf', () => {
         callOrder.push('waitForNetworkIdle');
         return Promise.resolve();
       });
+      mockPage.waitForFunction.mockImplementation(() => {
+        callOrder.push('waitForFunction');
+        return Promise.resolve(true);
+      });
       mockPage.pdf.mockImplementation(() => {
         callOrder.push('pdf');
         return Promise.resolve(new Uint8Array());
@@ -131,19 +136,35 @@ describe('previewPdf', () => {
 
       expect(callOrder).toContain('goto');
       expect(callOrder).not.toContain('waitForNetworkIdle');
+      expect(callOrder).not.toContain('waitForFunction');
       expect(callOrder).not.toContain('pdf');
     });
   });
 
-  describe('network idle', () => {
-    it('relies on networkidle2 and does not add a second idle wait', async () => {
+  describe('readiness', () => {
+    it('waits for the page readiness flag instead of network idle', async () => {
       await previewPdf(TEST_URL);
 
-      expect(mockPage.goto).toHaveBeenCalledWith(
-        TEST_URL,
-        expect.objectContaining({ waitUntil: 'networkidle2' }),
-      );
+      expect(mockPage.waitForFunction).toHaveBeenCalled();
       expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
+    });
+
+    it('waits for readiness before printing', async () => {
+      const callOrder: string[] = [];
+      mockPage.waitForFunction.mockImplementation(() => {
+        callOrder.push('waitForFunction');
+        return Promise.resolve(true);
+      });
+      mockPage.pdf.mockImplementation(() => {
+        callOrder.push('pdf');
+        return Promise.resolve(new Uint8Array());
+      });
+
+      await previewPdf(TEST_URL);
+
+      expect(callOrder.lastIndexOf('waitForFunction')).toBeLessThan(
+        callOrder.indexOf('pdf'),
+      );
     });
   });
 
@@ -184,11 +205,11 @@ describe('previewPdf', () => {
       );
     });
 
-    it('navigates with networkidle2 and timeout', async () => {
+    it('navigates with domcontentloaded and timeout', async () => {
       await previewPdf(TEST_URL);
 
       expect(mockPage.goto).toHaveBeenCalledWith(TEST_URL, {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: 120_000,
       });
     });

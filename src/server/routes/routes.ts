@@ -209,7 +209,9 @@ router.get('/puppeteer', (req: PuppeteerBrowserRequest, res, _next) => {
     apiLogger.error(`Template rendering error: ${errorString}`);
     res.send(
       `<div id="report-error" data-error="${escapeHtml(errorString)}">${escapeHtml(errorString)}</div>` +
-        `<script>console.error('[crc-pdf-generator] Template rendering error:', ${safeJsonStringify(errorString)});</script>`,
+        // Mark ready so the generator reads #report-error immediately instead of
+        // waiting out the readiness-flag detection (see src/browser/pageReady.ts).
+        `<script>window.__PDF_READY__ = true; console.error('[crc-pdf-generator] Template rendering error:', ${safeJsonStringify(errorString)});</script>`,
     );
   }
 });

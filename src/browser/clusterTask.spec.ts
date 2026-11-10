@@ -16,6 +16,7 @@ const mockPage = {
     .fn()
     .mockResolvedValue({ status: () => 200, statusText: () => 'OK' }),
   waitForNetworkIdle: jest.fn(),
+  waitForFunction: jest.fn().mockResolvedValue(true),
   waitForSelector: jest.fn().mockResolvedValue(undefined),
   setExtraHTTPHeaders: jest.fn(),
   setRequestInterception: jest.fn(),
@@ -175,6 +176,50 @@ describe('generatePdf', () => {
     mockPage.evaluate.mockResolvedValue(undefined);
     mockPage.pdf.mockResolvedValue(Buffer.from(''));
     mockPage.close.mockResolvedValue(undefined);
+  });
+
+  describe('page readiness', () => {
+    it('navigates without a network-idle tail and waits for the ready flag', async () => {
+      const callOrder: string[] = [];
+      mockPage.goto.mockImplementationOnce(() => {
+        callOrder.push('goto');
+        return Promise.resolve({ status: () => 200, statusText: () => 'OK' });
+      });
+      mockPage.waitForFunction.mockImplementation(() => {
+        callOrder.push('waitForFunction');
+        return Promise.resolve(true);
+      });
+      mockPage.pdf.mockImplementationOnce(() => {
+        callOrder.push('pdf');
+        return Promise.resolve(Buffer.from(''));
+      });
+
+      await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
+
+      expect(mockPage.goto).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ waitUntil: 'domcontentloaded' }),
+      );
+      expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
+      expect(callOrder.indexOf('goto')).toBeLessThan(
+        callOrder.indexOf('waitForFunction'),
+      );
+      expect(callOrder.lastIndexOf('waitForFunction')).toBeLessThan(
+        callOrder.indexOf('pdf'),
+      );
+    });
+
+    it('does not wait for readiness when the page status is bad', async () => {
+      mockPage.goto.mockResolvedValueOnce({
+        status: () => 500,
+        statusText: () => 'Internal Server Error',
+      });
+
+      await expect(
+        generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager()),
+      ).rejects.toThrow(PdfGenerationError);
+      expect(mockPage.waitForFunction).not.toHaveBeenCalled();
+    });
   });
 
   describe('successful generation', () => {
