@@ -32,7 +32,7 @@ matches the Linux cache layout used in the image.
 
 ```shell
 NODE_ENV=production npm run build
-CHROMIUM_PATH="$(node -e 'console.log(require("puppeteer").executablePath())')" \
+CHROMIUM_PATH="$(node -e 'require("puppeteer").executablePath({ headless: "shell" }).then(console.log)')" \
   MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin \
   node dist/server.js
 ```
