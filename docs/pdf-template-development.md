@@ -279,3 +279,19 @@ const PDFTemplate = ({ asyncData, additionalData }) => {
 export default PDFTemplate;
 
 ```
+
+### Print layout
+
+The generator lays your template out for print from the start: print media, with the viewport set to the printable area (A4 minus the page margins). That is 794x1015 for a portrait page and 1123x686 for landscape.
+
+Laying the page out for a screen first would make Chrome restyle and lay out the whole document a second time when it prints, which is most of the print cost on large reports.
+
+The PDF is the same either way unless the template sizes itself in JavaScript: reading `window.innerWidth`, `window.innerHeight` or an element's measured size, using responsive charts or anything else driven by a resize observer, or branching on `matchMedia`. Such code sees the printable area. `window.customPuppeteerParams` is unchanged.
+
+If your template depends on the old 1108x680 screen viewport, opt out in `additionalData`:
+
+```js
+additionalData: {
+  printLayout: false,
+}
+```

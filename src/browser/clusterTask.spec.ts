@@ -10,6 +10,7 @@ import { ComponentOutcome, componentResultTotal } from '../common/metrics';
 
 const mockPage = {
   setViewport: jest.fn(),
+  emulateMediaType: jest.fn(),
   on: jest.fn(),
   evaluate: jest.fn().mockResolvedValue(undefined),
   goto: jest
@@ -65,6 +66,7 @@ jest.mock('../server/utils', () => ({
 }));
 
 jest.mock('./helpers', () => ({
+  ...jest.requireActual<typeof import('./helpers')>('./helpers'),
   pageWidth: 1024,
   pageHeight: 768,
   setWindowProperty: jest.fn(),
@@ -290,6 +292,63 @@ describe('generatePdf', () => {
           margin: { top: '54px', bottom: '54px' },
         }),
       );
+    });
+
+    it('lays the page out for print before loading it', async () => {
+      await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
+
+      // A4 minus the 54px top and bottom margins passed to page.pdf.
+      expect(mockPage.setViewport).toHaveBeenCalledWith({
+        width: 794,
+        height: 1015,
+      });
+      expect(mockPage.emulateMediaType).toHaveBeenCalledWith('print');
+      expect(
+        mockPage.emulateMediaType.mock.invocationCallOrder[0],
+      ).toBeLessThan(mockPage.goto.mock.invocationCallOrder[0]);
+    });
+
+    it('sizes the print layout to the Lightwell margins', async () => {
+      await generatePdf(
+        makePdfRequest({ additionalData: { headerBrand: 'lightwell' } }),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(mockPage.setViewport).toHaveBeenCalledWith({
+        width: 738,
+        height: 989,
+      });
+    });
+
+    it('sizes the print layout to landscape paper', async () => {
+      await generatePdf(
+        makePdfRequest({ landscape: true }),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(mockPage.setViewport).toHaveBeenCalledWith({
+        width: 1123,
+        height: 686,
+      });
+    });
+
+    it('keeps the screen layout for a template that opts out', async () => {
+      await generatePdf(
+        makePdfRequest({ additionalData: { printLayout: false } }),
+        'coll-1',
+        1,
+        makeTokenManager(),
+      );
+
+      expect(mockPage.setViewport).toHaveBeenCalledWith({
+        width: 1024,
+        height: 768,
+      });
+      expect(mockPage.emulateMediaType).not.toHaveBeenCalled();
     });
 
     it('forwards auth header to same-origin (localhost) requests', async () => {

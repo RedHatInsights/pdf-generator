@@ -47,6 +47,39 @@ const A4Height = 297;
 export const pageWidth = (A4Height - 20) * 4;
 export const pageHeight = (A4Width - 40) * 4;
 
+export type PdfMargin = {
+  top: string;
+  bottom: string;
+  left?: string;
+  right?: string;
+};
+
+// A4 in CSS pixels at 96 dpi: the paper page.pdf prints on.
+const A4_PX = { width: 794, height: 1123 };
+
+/**
+ * The box one printed page gives the document: the paper minus the margins
+ * passed to page.pdf.
+ */
+export const printableArea = (landscape: boolean, margin: PdfMargin) => {
+  const px = (value?: string) => parseInt(value ?? '0', 10) || 0;
+  const paper = landscape
+    ? { width: A4_PX.height, height: A4_PX.width }
+    : A4_PX;
+  return {
+    width: paper.width - px(margin.left) - px(margin.right),
+    height: paper.height - px(margin.top) - px(margin.bottom),
+  };
+};
+
+/**
+ * Pages are laid out for print from the start. A template that sizes itself
+ * in JavaScript from the screen viewport can opt out by sending
+ * `additionalData.printLayout: false`.
+ */
+export const usesPrintLayout = (additionalData?: Record<string, unknown>) =>
+  additionalData?.printLayout !== false;
+
 export const setWindowProperty = (page: Page, name: string, value: string) =>
   page.evaluateOnNewDocument(`
     Object.defineProperty(window, '${name}', {

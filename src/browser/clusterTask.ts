@@ -1,7 +1,14 @@
 import os from 'os';
 import { PdfRequestBody } from '../common/types';
 import { apiLogger } from '../common/logging';
-import { pageHeight, pageWidth, setWindowProperty } from './helpers';
+import {
+  PdfMargin,
+  pageHeight,
+  pageWidth,
+  printableArea,
+  setWindowProperty,
+  usesPrintLayout,
+} from './helpers';
 import PdfCache, { PdfStatus } from '../common/pdfCache';
 import {
   getHeaderAndFooterTemplates,
@@ -84,7 +91,21 @@ async function runPageTask(
           componentId,
           collectionId,
         });
-        await page.setViewport({ width: pageWidth, height: pageHeight });
+        const brand = resolveHeaderBrand(additionalData);
+        const margin: PdfMargin =
+          brand === 'lightwell'
+            ? { top: '80px', bottom: '54px', left: '28px', right: '28px' }
+            : { top: '54px', bottom: '54px' };
+
+        if (usesPrintLayout(additionalData)) {
+          // Lay the page out the way it will be printed. Otherwise page.pdf
+          // switches a finished screen layout to print media and page size,
+          // and Chrome restyles and lays out the whole document again.
+          await page.setViewport(printableArea(landscape, margin));
+          await page.emulateMediaType('print');
+        } else {
+          await page.setViewport({ width: pageWidth, height: pageHeight });
+        }
         page.on('console', (msg) => {
           apiLogger.debug(`[Headless log] ${msg.text()}`);
         });
@@ -272,8 +293,6 @@ async function runPageTask(
           return;
         }
 
-        const brand = resolveHeaderBrand(additionalData);
-
         let lightwellSvg: string | null = null;
         if (brand === 'lightwell') {
           try {
@@ -303,10 +322,7 @@ async function runPageTask(
           path: pdfPath,
           format: 'a4',
           printBackground: true,
-          margin:
-            brand === 'lightwell'
-              ? { top: '80px', bottom: '54px', left: '28px', right: '28px' }
-              : { top: '54px', bottom: '54px' },
+          margin,
           landscape,
           displayHeaderFooter: true,
           headerTemplate,
