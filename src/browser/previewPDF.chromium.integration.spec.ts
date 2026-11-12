@@ -18,6 +18,7 @@ import webpack, { Configuration as WebpackConfiguration } from 'webpack';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import previewPdf from './previewPDF';
+import { trackRequests, waitForPageReady } from './pageReady';
 import renderTemplate from '../server/render-template';
 
 let mockBrowser: Browser;
@@ -50,6 +51,7 @@ const PAGES: Record<string, string> = {
     setTimeout(() => {
       document.body.innerHTML = '<h1>${SENTINEL}</h1><p>${SENTINEL} rendered late.</p>';
       window.__PDF_READY__ = true;
+      window.dispatchEvent(new Event('pdf-ready'));
     }, 1500);
   </script></body></html>`,
 };
@@ -342,6 +344,30 @@ describe('previewPdf against real Chromium', () => {
           true,
         { timeout: 30000 },
       );
+    } finally {
+      await page.close();
+    }
+  }, 180000);
+
+  /**
+   * The generator looks for the ready flag once, at DOMContentLoaded. That is
+   * only safe while the real bundle has already run by then (it is emitted as
+   * a deferred script), so check it against the genuine article.
+   */
+  it('finds the ready flag at DOMContentLoaded and waits for the app', async () => {
+    const page = await mockBrowser.newPage();
+    try {
+      const requests = trackRequests(page);
+      await page.goto(`${origin}/puppeteer`, { waitUntil: 'domcontentloaded' });
+      expect(await page.evaluate(() => typeof window.__PDF_READY__)).toBe(
+        'boolean',
+      );
+
+      await waitForPageReady(page, requests);
+
+      // Ready on the error path means the failure is already on the page for
+      // the generator's checks to read.
+      expect(await page.$('#crc-pdf-generator-err')).not.toBeNull();
     } finally {
       await page.close();
     }

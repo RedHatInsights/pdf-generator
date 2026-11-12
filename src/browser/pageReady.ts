@@ -1,62 +1,192 @@
-import type { Page } from 'puppeteer';
+import type { HTTPRequest, Page } from 'puppeteer';
 import { apiLogger } from '../common/logging';
 import { BROWSER_TIMEOUT } from '../common/constants';
+import { PDF_LOADING_ATTR, PDF_READY_EVENT } from '../client/pdfReady';
 
 /**
- * Generator-side half of the PDF readiness contract (see src/client/pdfReady.ts).
+ * Generator-side half of the PDF readiness contract (page side:
+ * src/client/pdfReady.ts).
  *
- * Pages are opened with `waitUntil: 'domcontentloaded'`, then this waits for the
- * page to set `window.__PDF_READY__ = true`. That replaces networkidle2's fixed
- * 500 ms quiet period and the extra 1 s network-idle wait that used to follow it.
+ * Pages are opened with `waitUntil: 'domcontentloaded'`. A page is then ready
+ * to print once all of these hold:
  *
- * Pages that never define the flag (no client bundle — e.g. a plain HTML page or
- * a bundle that failed to load) fall back to the old network-idle wait, so they
- * print exactly as before.
+ *   - it reports ready (`window.__PDF_READY__ === true`), if it has the flag
+ *   - no loading placeholder (`data-pdf-loading`) is showing
+ *   - the DOM has not changed for DOM_QUIET_MS and fonts are loaded
+ *   - no request is still downloading
+ *
+ * Requests are counted here, not in the page, because Puppeteer sees every
+ * kind (lazy script chunks, styles, images, fonts, XHR, fetch) and reports a
+ * request finished only once its body has arrived.
  */
 
-/** How long to wait for the client bundle to define the flag at all. */
-export const READY_FLAG_DETECT_TIMEOUT = 5_000;
-/** Matches networkidle2's quiet window, used only on the fallback path. */
-export const FALLBACK_IDLE_MS = 500;
-/** Interval polling avoids requestAnimationFrame, which can pause for hidden pages. */
-const POLL_INTERVAL_MS = 50;
+/** How long the DOM must stay unchanged before rendering counts as settled. */
+export const DOM_QUIET_MS = 100;
+/** Cap on the quiet wait once nothing is loading, e.g. for animations. */
+export const MAX_SETTLE_MS = 5_000;
+/** Cap on waiting for open requests, so a stuck one cannot hold the page. */
+export const MAX_NETWORK_WAIT_MS = 30_000;
 
-export type ReadyOutcome = 'ready' | 'fallback';
+export type RequestTracker = {
+  /** URLs of the requests that are still downloading. */
+  pending: () => string[];
+  /** Resolves when no request is downloading, or after `maxMs`. */
+  idle: (maxMs: number) => Promise<void>;
+};
 
-type ReadyWindow = { __PDF_READY__?: boolean };
+/** Counts the page's open requests. Call before `page.goto`. */
+export function trackRequests(page: Page): RequestTracker {
+  const open = new Set<HTTPRequest>();
+  let onIdle: (() => void) | undefined;
+
+  const closed = (request: HTTPRequest) => {
+    open.delete(request);
+    if (open.size === 0) {
+      onIdle?.();
+    }
+  };
+  page.on('request', (request) => open.add(request));
+  page.on('requestfinished', closed);
+  page.on('requestfailed', closed);
+
+  return {
+    pending: () => Array.from(open, (request) => request.url()),
+    idle: (maxMs) =>
+      new Promise<void>((resolve) => {
+        if (open.size === 0) {
+          resolve();
+          return;
+        }
+        const timer = setTimeout(() => onIdle?.(), maxMs);
+        onIdle = () => {
+          clearTimeout(timer);
+          onIdle = undefined;
+          resolve();
+        };
+      }),
+  };
+}
+
+/**
+ * Runs in the page. Resolves once the page is rendered and the DOM has been
+ * still for `quietMs`; rejects, saying what it was waiting for, after `timeoutMs`.
+ * Driven by DOM mutations and the ready event, not by polling.
+ *
+ * While the report is loading the wait has no cap of its own: printing a
+ * placeholder is the failure this guards against. Once it has rendered, the
+ * quiet wait is capped at `maxSettleMs` so continuous DOM updates cannot hold
+ * the page.
+ *
+ * Puppeteer sends this function to the browser as source text, and the server
+ * build targets ES5: keep it self-contained and free of syntax that compiles
+ * to helper calls (async/await, spread, for...of).
+ */
+function settleInPage(
+  loadingAttr: string,
+  readyEvent: string,
+  needsFlag: boolean,
+  quietMs: number,
+  maxSettleMs: number,
+  timeoutMs: number,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timers: { quiet?: number; cap?: number; deadline?: number } = {};
+    const watchers: (() => void)[] = [];
+    let waitingFor = 'the page to report ready';
+
+    const stopWatching = () => {
+      watchers.forEach((unwatch) => unwatch());
+      clearTimeout(timers.quiet);
+      clearTimeout(timers.cap);
+    };
+    const settled = () => {
+      stopWatching();
+      waitingFor = 'fonts to load';
+      void document.fonts.ready.then(() => {
+        clearTimeout(timers.deadline);
+        resolve();
+      });
+    };
+    const check = () => {
+      clearTimeout(timers.quiet);
+      if (needsFlag && window.__PDF_READY__ !== true) {
+        return;
+      }
+      if (document.querySelector('[' + loadingAttr + ']') !== null) {
+        waitingFor = 'a loading placeholder to go away';
+        return;
+      }
+      waitingFor = 'the DOM to stop changing';
+      if (timers.cap === undefined) {
+        timers.cap = window.setTimeout(settled, maxSettleMs);
+      }
+      timers.quiet = window.setTimeout(settled, quietMs);
+    };
+
+    timers.deadline = window.setTimeout(() => {
+      stopWatching();
+      reject(new Error('Page not ready to print: waiting for ' + waitingFor));
+    }, timeoutMs);
+
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+    window.addEventListener(readyEvent, check);
+    watchers.push(
+      () => observer.disconnect(),
+      () => window.removeEventListener(readyEvent, check),
+    );
+    check();
+  });
+}
 
 export async function waitForPageReady(
   page: Page,
+  requests: RequestTracker,
   timeout: number = BROWSER_TIMEOUT,
-): Promise<ReadyOutcome> {
+): Promise<void> {
   const started = Date.now();
+  const timeLeft = () => Math.max(1, timeout - (Date.now() - started));
 
-  const adopted = await page
-    .waitForFunction(
-      () =>
-        typeof (window as unknown as ReadyWindow).__PDF_READY__ === 'boolean',
-      { timeout: READY_FLAG_DETECT_TIMEOUT, polling: POLL_INTERVAL_MS },
-    )
-    .then(
-      () => true,
-      () => false,
-    );
+  // The client bundle is a deferred script, so it has run and set the flag by
+  // DOMContentLoaded. No flag means no bundle (a static page, or the bundle
+  // failed to load): settle on the DOM and the network alone.
+  const needsFlag = await page.evaluate(
+    () => typeof window.__PDF_READY__ === 'boolean',
+  );
 
-  if (!adopted) {
-    apiLogger.debug(
-      `Page did not expose __PDF_READY__ within ${READY_FLAG_DETECT_TIMEOUT}ms; falling back to network idle`,
+  let networkDeadline: number | undefined;
+  for (;;) {
+    await page.evaluate(
+      settleInPage,
+      PDF_LOADING_ATTR,
+      PDF_READY_EVENT,
+      needsFlag,
+      DOM_QUIET_MS,
+      MAX_SETTLE_MS,
+      timeLeft(),
     );
-    await page.waitForNetworkIdle({ idleTime: FALLBACK_IDLE_MS, timeout });
-    apiLogger.debug(
-      `Page ready via network-idle fallback in ${Date.now() - started}ms`,
-    );
-    return 'fallback';
+    // A request that is still open can change the page when it lands, so wait
+    // for it and settle again.
+    if (requests.pending().length === 0) {
+      break;
+    }
+    networkDeadline ??= Date.now() + MAX_NETWORK_WAIT_MS;
+    const networkTimeLeft = networkDeadline - Date.now();
+    if (networkTimeLeft <= 0) {
+      apiLogger.warning(
+        `Printing with requests still open after ${MAX_NETWORK_WAIT_MS}ms: ${requests.pending().join(', ')}`,
+      );
+      break;
+    }
+    await requests.idle(Math.min(networkTimeLeft, timeLeft()));
   }
 
-  await page.waitForFunction(
-    () => (window as unknown as ReadyWindow).__PDF_READY__ === true,
-    { timeout, polling: POLL_INTERVAL_MS },
+  apiLogger.debug(
+    `Page ready to print in ${Date.now() - started}ms (${needsFlag ? 'ready flag' : 'no ready flag'})`,
   );
-  apiLogger.debug(`Page signalled ready in ${Date.now() - started}ms`);
-  return 'ready';
 }

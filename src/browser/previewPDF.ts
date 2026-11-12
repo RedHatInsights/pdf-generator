@@ -6,7 +6,7 @@ import { getHeaderAndFooterTemplates } from '../server/render-template';
 import { apiLogger } from '../common/logging';
 import { cluster } from '../server/cluster';
 import { BROWSER_TIMEOUT } from '../common/constants';
-import { waitForPageReady } from './pageReady';
+import { trackRequests, waitForPageReady } from './pageReady';
 
 const previewPdf = async (url: string): Promise<Buffer> => {
   const pdf = await cluster.execute(async ({ page }: { page: Page }) => {
@@ -40,6 +40,7 @@ const previewPdf = async (url: string): Promise<Buffer> => {
       await page.setExtraHTTPHeaders(extraHeaders);
 
       // Same readiness flow as clusterTask.ts: no network-idle tail on goto.
+      const requests = trackRequests(page);
       const pageStatus = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: BROWSER_TIMEOUT,
@@ -51,7 +52,7 @@ const previewPdf = async (url: string): Promise<Buffer> => {
         );
       }
 
-      await waitForPageReady(page);
+      await waitForPageReady(page, requests);
 
       const { headerTemplate, footerTemplate } = getHeaderAndFooterTemplates();
 

@@ -17,7 +17,7 @@ import { PDFDocument } from 'pdf-lib';
 import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
 import { ComponentOutcome, recordGeneratedPdf } from '../common/metrics';
-import { waitForPageReady } from './pageReady';
+import { trackRequests, waitForPageReady } from './pageReady';
 
 /**
  * Returned from the page when it produced nothing a reader would recognise as a
@@ -198,8 +198,9 @@ async function runPageTask(
           }
         });
 
-        // Don't wait for the network to go quiet: the page signals when the
-        // report has rendered (waitForPageReady, after the status check).
+        // Don't wait for the network to go quiet on goto: waitForPageReady
+        // (after the status check) prints as soon as the report has rendered.
+        const requests = trackRequests(page);
         const pageResponse = await page.goto(url, {
           waitUntil: 'domcontentloaded',
           timeout: BROWSER_TIMEOUT,
@@ -214,7 +215,7 @@ async function runPageTask(
           );
         }
 
-        await waitForPageReady(page);
+        await waitForPageReady(page, requests);
 
         // A failed report does not always announce itself. When the page never
         // mounts, the error elements below are never created either, so the only

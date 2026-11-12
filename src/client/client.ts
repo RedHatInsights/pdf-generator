@@ -2,13 +2,12 @@ import 'pf-5-styles/patternfly.min.css';
 import 'pf-5-styles/patternfly-addons.css';
 import '@patternfly/patternfly/patternfly.min.css';
 import '@patternfly/patternfly/patternfly-addons.css';
-import { markPdfPending, markPdfReady, trackNetworkRequests } from './pdfReady';
+import { markPdfPending, markPdfReady } from './pdfReady';
 
 // Tell the generator this page reports its own readiness (see pdfReady.ts).
+// The generator looks for the flag at DOMContentLoaded, so this must stay in
+// the entry chunk, which is loaded as a deferred script.
 markPdfPending();
-// Count XHR/fetch requests from the start so template data fetches hold off
-// the ready signal.
-trackNetworkRequests();
 
 import('./bootstrap').catch((error) => {
   // If the app cannot even start, let the generator's blank/error checks fail

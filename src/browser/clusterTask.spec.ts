@@ -16,7 +16,6 @@ const mockPage = {
     .fn()
     .mockResolvedValue({ status: () => 200, statusText: () => 'OK' }),
   waitForNetworkIdle: jest.fn(),
-  waitForFunction: jest.fn().mockResolvedValue(true),
   waitForSelector: jest.fn().mockResolvedValue(undefined),
   setExtraHTTPHeaders: jest.fn(),
   setRequestInterception: jest.fn(),
@@ -24,6 +23,17 @@ const mockPage = {
   pdf: jest.fn().mockResolvedValue(Buffer.from('')),
   close: jest.fn(),
 };
+
+const mockRequests = { pending: jest.fn(), idle: jest.fn() };
+const mockTrackRequests = jest.fn((_page: unknown) => mockRequests);
+const mockWaitForPageReady = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(),
+);
+
+jest.mock('./pageReady', () => ({
+  trackRequests: (page: unknown) => mockTrackRequests(page),
+  waitForPageReady: (...args: unknown[]) => mockWaitForPageReady(...args),
+}));
 
 jest.mock('../server/cluster', () => ({
   cluster: {
@@ -179,15 +189,19 @@ describe('generatePdf', () => {
   });
 
   describe('page readiness', () => {
-    it('navigates without a network-idle tail and waits for the ready flag', async () => {
+    it('navigates without a network-idle tail and prints once ready', async () => {
       const callOrder: string[] = [];
+      mockTrackRequests.mockImplementationOnce(() => {
+        callOrder.push('trackRequests');
+        return mockRequests;
+      });
       mockPage.goto.mockImplementationOnce(() => {
         callOrder.push('goto');
         return Promise.resolve({ status: () => 200, statusText: () => 'OK' });
       });
-      mockPage.waitForFunction.mockImplementation(() => {
-        callOrder.push('waitForFunction');
-        return Promise.resolve(true);
+      mockWaitForPageReady.mockImplementationOnce(() => {
+        callOrder.push('waitForPageReady');
+        return Promise.resolve();
       });
       mockPage.pdf.mockImplementationOnce(() => {
         callOrder.push('pdf');
@@ -201,12 +215,13 @@ describe('generatePdf', () => {
         expect.objectContaining({ waitUntil: 'domcontentloaded' }),
       );
       expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
-      expect(callOrder.indexOf('goto')).toBeLessThan(
-        callOrder.indexOf('waitForFunction'),
-      );
-      expect(callOrder.lastIndexOf('waitForFunction')).toBeLessThan(
-        callOrder.indexOf('pdf'),
-      );
+      expect(mockWaitForPageReady).toHaveBeenCalledWith(mockPage, mockRequests);
+      expect(callOrder).toEqual([
+        'trackRequests',
+        'goto',
+        'waitForPageReady',
+        'pdf',
+      ]);
     });
 
     it('does not wait for readiness when the page status is bad', async () => {
@@ -218,7 +233,7 @@ describe('generatePdf', () => {
       await expect(
         generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager()),
       ).rejects.toThrow(PdfGenerationError);
-      expect(mockPage.waitForFunction).not.toHaveBeenCalled();
+      expect(mockWaitForPageReady).not.toHaveBeenCalled();
     });
   });
 

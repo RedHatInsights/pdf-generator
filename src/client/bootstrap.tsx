@@ -15,7 +15,7 @@ import {
 } from '../integration/endpoints';
 import { resolveInternalRouteKey } from '../common/integrationEndpoints';
 import FetchErrorFallback from './FetchErrorFallback';
-import { PDF_LOADING_ATTR, signalReadyWhenSettled } from './pdfReady';
+import { PDF_LOADING_ATTR, markPdfReady } from './pdfReady';
 
 import 'react/jsx-runtime';
 import 'react-intl';
@@ -153,15 +153,12 @@ const MetadataWrapper = () => {
 
   const { error, loading, data } = asyncState;
 
-  // Once data (or an error) is in, wait for the template to mount and settle,
-  // then tell the generator it can print. Loading placeholders carry
-  // PDF_LOADING_ATTR so the settle wait cannot finish while one is showing.
+  // Data (or an error) is in. The generator takes it from here: it waits for
+  // the template to mount and settle. Loading placeholders carry
+  // PDF_LOADING_ATTR so it cannot print while one is showing.
   useEffect(() => {
     if (!loading) {
-      // Never rejects; it marks the page ready even if the wait itself fails.
-      void signalReadyWhenSettled(
-        document.getElementById('root') ?? document.body,
-      );
+      markPdfReady();
     }
   }, [loading]);
 

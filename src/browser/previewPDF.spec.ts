@@ -3,12 +3,22 @@ const mockPage = {
   on: jest.fn(),
   goto: jest.fn().mockResolvedValue({ ok: () => true, statusText: () => 'OK' }),
   waitForNetworkIdle: jest.fn(),
-  waitForFunction: jest.fn().mockResolvedValue(true),
   setExtraHTTPHeaders: jest.fn(),
   setCookie: jest.fn(),
   pdf: jest.fn().mockResolvedValue(new Uint8Array(Buffer.from('%PDF-mock'))),
   close: jest.fn(),
 };
+
+const mockRequests = { pending: jest.fn(), idle: jest.fn() };
+const mockTrackRequests = jest.fn((_page: unknown) => mockRequests);
+const mockWaitForPageReady = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(),
+);
+
+jest.mock('./pageReady', () => ({
+  trackRequests: (page: unknown) => mockTrackRequests(page),
+  waitForPageReady: (...args: unknown[]) => mockWaitForPageReady(...args),
+}));
 
 const mockExecute = jest.fn(
   (taskFn: ({ page }: { page: unknown }) => Promise<unknown>) =>
@@ -121,9 +131,9 @@ describe('previewPdf', () => {
         callOrder.push('waitForNetworkIdle');
         return Promise.resolve();
       });
-      mockPage.waitForFunction.mockImplementation(() => {
-        callOrder.push('waitForFunction');
-        return Promise.resolve(true);
+      mockWaitForPageReady.mockImplementation(() => {
+        callOrder.push('waitForPageReady');
+        return Promise.resolve();
       });
       mockPage.pdf.mockImplementation(() => {
         callOrder.push('pdf');
@@ -136,35 +146,46 @@ describe('previewPdf', () => {
 
       expect(callOrder).toContain('goto');
       expect(callOrder).not.toContain('waitForNetworkIdle');
-      expect(callOrder).not.toContain('waitForFunction');
+      expect(callOrder).not.toContain('waitForPageReady');
       expect(callOrder).not.toContain('pdf');
     });
   });
 
   describe('readiness', () => {
-    it('waits for the page readiness flag instead of network idle', async () => {
+    it('waits for page readiness instead of network idle', async () => {
       await previewPdf(TEST_URL);
 
-      expect(mockPage.waitForFunction).toHaveBeenCalled();
+      expect(mockWaitForPageReady).toHaveBeenCalledWith(mockPage, mockRequests);
       expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
     });
 
-    it('waits for readiness before printing', async () => {
+    it('tracks requests from before navigation and prints once ready', async () => {
       const callOrder: string[] = [];
-      mockPage.waitForFunction.mockImplementation(() => {
-        callOrder.push('waitForFunction');
-        return Promise.resolve(true);
+      mockTrackRequests.mockImplementationOnce(() => {
+        callOrder.push('trackRequests');
+        return mockRequests;
       });
-      mockPage.pdf.mockImplementation(() => {
+      mockPage.goto.mockImplementationOnce(() => {
+        callOrder.push('goto');
+        return Promise.resolve({ ok: () => true, statusText: () => 'OK' });
+      });
+      mockWaitForPageReady.mockImplementationOnce(() => {
+        callOrder.push('waitForPageReady');
+        return Promise.resolve();
+      });
+      mockPage.pdf.mockImplementationOnce(() => {
         callOrder.push('pdf');
         return Promise.resolve(new Uint8Array());
       });
 
       await previewPdf(TEST_URL);
 
-      expect(callOrder.lastIndexOf('waitForFunction')).toBeLessThan(
-        callOrder.indexOf('pdf'),
-      );
+      expect(callOrder).toEqual([
+        'trackRequests',
+        'goto',
+        'waitForPageReady',
+        'pdf',
+      ]);
     });
   });
 
