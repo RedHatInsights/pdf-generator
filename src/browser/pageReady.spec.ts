@@ -64,6 +64,16 @@ describe('trackRequests', () => {
     expect(requests.pending()).toEqual([]);
   });
 
+  it('leaves query strings and fragments out of the URLs it reports', () => {
+    const page = makePage();
+    const requests = trackRequests(asPage(page));
+
+    page.emit('request', request('https://api.test/report?email=a@b.test'));
+    page.emit('request', request('/rows#token=abc'));
+
+    expect(requests.pending()).toEqual(['https://api.test/report', '/rows']);
+  });
+
   it('is idle at once when nothing is open', async () => {
     const requests = trackRequests(asPage(makePage()));
 
@@ -128,9 +138,8 @@ describe('waitForPageReady', () => {
     await waitForPageReady(asPage(withFlag), makeRequests([[]]));
     await waitForPageReady(asPage(withoutFlag), makeRequests([[]]));
 
-    // settleInPage(loadingAttr, readyEvent, needsFlag, ...)
-    expect(settleCalls(withFlag)[0][3]).toBe(true);
-    expect(settleCalls(withoutFlag)[0][3]).toBe(false);
+    expect(settleCalls(withFlag)[0][1]).toMatchObject({ needsFlag: true });
+    expect(settleCalls(withoutFlag)[0][1]).toMatchObject({ needsFlag: false });
   });
 
   it('waits for open requests, then settles again', async () => {
@@ -162,6 +171,26 @@ describe('waitForPageReady', () => {
       expect(apiLogger.warning).toHaveBeenCalledWith(
         expect.stringContaining('/stuck'),
       );
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('stops at the network cap when requests keep opening', async () => {
+    let now = 0;
+    const clock = jest.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      const page = makePage();
+      // Never idle: every wait returns with something still open.
+      const requests = makeRequests([['/poll']], () => {
+        now += 10_000;
+        return Promise.resolve();
+      });
+
+      await waitForPageReady(asPage(page), requests, 120_000);
+
+      expect(requests.idle).toHaveBeenCalledTimes(MAX_NETWORK_WAIT_MS / 10_000);
+      expect(settleCalls(page)).toHaveLength(MAX_NETWORK_WAIT_MS / 10_000 + 1);
     } finally {
       clock.mockRestore();
     }

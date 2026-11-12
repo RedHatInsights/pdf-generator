@@ -28,7 +28,10 @@ export const MAX_SETTLE_MS = 5_000;
 export const MAX_NETWORK_WAIT_MS = 30_000;
 
 export type RequestTracker = {
-  /** URLs of the requests that are still downloading. */
+  /**
+   * URLs of the requests that are still downloading, without their query
+   * strings: these end up in logs, and a query can carry identifiers.
+   */
   pending: () => string[];
   /** Resolves when no request is downloading, or after `maxMs`. */
   idle: (maxMs: number) => Promise<void>;
@@ -50,7 +53,8 @@ export function trackRequests(page: Page): RequestTracker {
   page.on('requestfailed', closed);
 
   return {
-    pending: () => Array.from(open, (request) => request.url()),
+    pending: () =>
+      Array.from(open, (request) => request.url().split(/[?#]/, 1)[0]),
     idle: (maxMs) =>
       new Promise<void>((resolve) => {
         if (open.size === 0) {
@@ -67,78 +71,108 @@ export function trackRequests(page: Page): RequestTracker {
   };
 }
 
+type SettleOptions = {
+  loadingAttr: string;
+  readyEvent: string;
+  needsFlag: boolean;
+  quietMs: number;
+  maxSettleMs: number;
+  timeoutMs: number;
+};
+
 /**
- * Runs in the page. Resolves once the page is rendered and the DOM has been
- * still for `quietMs`; rejects, saying what it was waiting for, after `timeoutMs`.
- * Driven by DOM mutations and the ready event, not by polling.
+ * Runs in the page. Resolves once nothing is loading and the DOM has been
+ * still for `quietMs`; rejects, saying what it was waiting for, after
+ * `timeoutMs`. Driven by DOM mutations and events, not by polling.
  *
- * While the report is loading the wait has no cap of its own: printing a
- * placeholder is the failure this guards against. Once it has rendered, the
- * quiet wait is capped at `maxSettleMs` so continuous DOM updates cannot hold
- * the page.
+ * "Loading" means the ready flag is not true yet, a loading placeholder is
+ * showing, or fonts are loading. While any of those holds the wait has no cap
+ * of its own: printing a placeholder is the failure this guards against. Only
+ * the quiet wait that follows is capped, at `maxSettleMs`, so continuous DOM
+ * updates cannot hold the page.
  *
  * Puppeteer sends this function to the browser as source text, and the server
  * build targets ES5: keep it self-contained and free of syntax that compiles
- * to helper calls (async/await, spread, for...of).
+ * to helper calls (async/await, spread, destructuring, for...of).
  */
-function settleInPage(
-  loadingAttr: string,
-  readyEvent: string,
-  needsFlag: boolean,
-  quietMs: number,
-  maxSettleMs: number,
-  timeoutMs: number,
-): Promise<void> {
+function settleInPage(options: SettleOptions): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const timers: { quiet?: number; cap?: number; deadline?: number } = {};
     const watchers: (() => void)[] = [];
-    let waitingFor = 'the page to report ready';
+    let lastChange = Date.now();
+    let capped = false;
+    let waitingFor = 'the page to settle';
 
+    const loading = () => {
+      if (options.needsFlag && window.__PDF_READY__ !== true) {
+        return 'the page to report ready';
+      }
+      if (document.querySelector('[' + options.loadingAttr + ']') !== null) {
+        return 'a loading placeholder to go away';
+      }
+      if (document.fonts.status === 'loading') {
+        return 'fonts to load';
+      }
+      return undefined;
+    };
     const stopWatching = () => {
       watchers.forEach((unwatch) => unwatch());
       clearTimeout(timers.quiet);
       clearTimeout(timers.cap);
+      clearTimeout(timers.deadline);
     };
-    const settled = () => {
-      stopWatching();
-      waitingFor = 'fonts to load';
-      void document.fonts.ready.then(() => {
-        clearTimeout(timers.deadline);
-        resolve();
-      });
-    };
+    // Every wake-up comes through here, so the loading checks always run
+    // right before the page is declared settled.
     const check = () => {
       clearTimeout(timers.quiet);
-      if (needsFlag && window.__PDF_READY__ !== true) {
-        return;
-      }
-      if (document.querySelector('[' + loadingAttr + ']') !== null) {
-        waitingFor = 'a loading placeholder to go away';
+      const blocker = loading();
+      if (blocker !== undefined) {
+        waitingFor = blocker;
+        clearTimeout(timers.cap);
+        timers.cap = undefined;
+        capped = false;
         return;
       }
       waitingFor = 'the DOM to stop changing';
-      if (timers.cap === undefined) {
-        timers.cap = window.setTimeout(settled, maxSettleMs);
+      const quietLeft = options.quietMs - (Date.now() - lastChange);
+      if (capped || quietLeft <= 0) {
+        stopWatching();
+        resolve();
+        return;
       }
-      timers.quiet = window.setTimeout(settled, quietMs);
+      if (timers.cap === undefined) {
+        timers.cap = window.setTimeout(() => {
+          capped = true;
+          check();
+        }, options.maxSettleMs);
+      }
+      timers.quiet = window.setTimeout(check, quietLeft);
+    };
+    // The DOM changed or the page reported ready: restart the quiet wait.
+    const changed = () => {
+      lastChange = Date.now();
+      check();
     };
 
     timers.deadline = window.setTimeout(() => {
       stopWatching();
       reject(new Error('Page not ready to print: waiting for ' + waitingFor));
-    }, timeoutMs);
+    }, options.timeoutMs);
 
-    const observer = new MutationObserver(check);
+    const observer = new MutationObserver(changed);
     observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
       attributes: true,
       characterData: true,
     });
-    window.addEventListener(readyEvent, check);
+    window.addEventListener(options.readyEvent, changed);
+    // Fonts arriving do not change the DOM, so they do not restart the wait.
+    document.fonts.addEventListener('loadingdone', check);
     watchers.push(
       () => observer.disconnect(),
-      () => window.removeEventListener(readyEvent, check),
+      () => window.removeEventListener(options.readyEvent, changed),
+      () => document.fonts.removeEventListener('loadingdone', check),
     );
     check();
   });
@@ -158,32 +192,33 @@ export async function waitForPageReady(
   const needsFlag = await page.evaluate(
     () => typeof window.__PDF_READY__ === 'boolean',
   );
-
-  let networkDeadline: number | undefined;
-  for (;;) {
-    await page.evaluate(
-      settleInPage,
-      PDF_LOADING_ATTR,
-      PDF_READY_EVENT,
+  const settle = () =>
+    page.evaluate(settleInPage, {
+      loadingAttr: PDF_LOADING_ATTR,
+      readyEvent: PDF_READY_EVENT,
       needsFlag,
-      DOM_QUIET_MS,
-      MAX_SETTLE_MS,
-      timeLeft(),
+      quietMs: DOM_QUIET_MS,
+      maxSettleMs: MAX_SETTLE_MS,
+      timeoutMs: timeLeft(),
+    });
+
+  await settle();
+
+  // A request that is still open can change the page when it lands, so wait
+  // for it and settle again. This cannot hang: idle() returns by the network
+  // deadline at the latest, settle() rejects once `timeout` has run out, and
+  // the cluster's task timeout bounds the page as a whole.
+  const networkDeadline = Date.now() + MAX_NETWORK_WAIT_MS;
+  while (requests.pending().length > 0 && Date.now() < networkDeadline) {
+    await requests.idle(Math.min(networkDeadline - Date.now(), timeLeft()));
+    await settle();
+  }
+
+  const stillOpen = requests.pending();
+  if (stillOpen.length > 0) {
+    apiLogger.warning(
+      `Printing with ${stillOpen.length} request(s) still open after ${MAX_NETWORK_WAIT_MS}ms: ${stillOpen.join(', ')}`,
     );
-    // A request that is still open can change the page when it lands, so wait
-    // for it and settle again.
-    if (requests.pending().length === 0) {
-      break;
-    }
-    networkDeadline ??= Date.now() + MAX_NETWORK_WAIT_MS;
-    const networkTimeLeft = networkDeadline - Date.now();
-    if (networkTimeLeft <= 0) {
-      apiLogger.warning(
-        `Printing with requests still open after ${MAX_NETWORK_WAIT_MS}ms: ${requests.pending().join(', ')}`,
-      );
-      break;
-    }
-    await requests.idle(Math.min(networkTimeLeft, timeLeft()));
   }
 
   apiLogger.debug(

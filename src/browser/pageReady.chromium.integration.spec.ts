@@ -7,7 +7,7 @@
 import http from 'http';
 import { AddressInfo } from 'net';
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { trackRequests, waitForPageReady } from './pageReady';
+import { MAX_SETTLE_MS, trackRequests, waitForPageReady } from './pageReady';
 
 jest.mock('../common/logging', () => ({
   apiLogger: {
@@ -23,6 +23,12 @@ const MARK_READY = `window.__PDF_READY__ = true; window.dispatchEvent(new Event(
 const ADD_ROWS = `(rows) => rows.forEach((row) => {
   document.querySelector('table').insertRow().insertCell().textContent = row;
 })`;
+
+const SHOW_PLACEHOLDER = `document.getElementById('root').innerHTML = '<div data-pdf-loading>Loading...</div>';`;
+const SHOW_ROW = `document.getElementById('root').innerHTML = '<table><tr><td>row</td></tr></table>';`;
+// A web font that takes SLOW_MS to arrive, requested at the first layout.
+const USE_SLOW_FONT = `document.head.insertAdjacentHTML('beforeend',
+  '<style>@font-face { font-family: slow; src: url(/slow-font.woff2); } body { font-family: slow; }</style>');`;
 
 const page = (script: string, body = '<table></table>') =>
   `<!doctype html><html><body><div id="root">${body}</div><script>${script}</script></body></html>`;
@@ -87,6 +93,22 @@ const PAGES: Record<string, string> = {
     });`,
     '',
   ),
+  '/slow-font': page(`${USE_SLOW_FONT} ${MARK_READY}`, '<p>text</p>'),
+  // The DOM goes quiet, then a placeholder shows up while the font is still
+  // loading and no other request is open.
+  '/placeholder-during-fonts': page(
+    `${USE_SLOW_FONT} ${MARK_READY}
+    setTimeout(() => { ${SHOW_PLACEHOLDER} }, 300);
+    setTimeout(() => { ${SHOW_ROW} }, 1500);`,
+    '<p>text</p>',
+  ),
+  // Looks rendered for a moment, then loads for longer than MAX_SETTLE_MS.
+  '/placeholder-returns': page(
+    `${MARK_READY}
+    setTimeout(() => { ${SHOW_PLACEHOLDER} }, 50);
+    setTimeout(() => { ${SHOW_ROW} }, ${MAX_SETTLE_MS + 500});`,
+    '<p>text</p>',
+  ),
   // No client bundle, so no flag: must still wait for its request.
   '/no-flag': page(
     `fetch('/rows?slow=headers').then((r) => r.json()).then(${ADD_ROWS});`,
@@ -127,6 +149,11 @@ beforeAll(async () => {
       later(() => {
         res.writeHead(200, { 'Content-Type': 'application/javascript' });
         res.end(CHUNK);
+      });
+    } else if (url.pathname === '/slow-font.woff2') {
+      later(() => {
+        res.writeHead(404);
+        res.end();
       });
     } else if (url.pathname === '/pixel.png') {
       later(() => {
@@ -173,6 +200,12 @@ async function openReady<T>(
   }
 }
 
+const placeholderAndRow = (tab: Page) =>
+  tab.evaluate(() => ({
+    placeholder: document.querySelector('[data-pdf-loading]') !== null,
+    cell: document.querySelector('td')?.textContent,
+  }));
+
 const cellCount = (tab: Page) =>
   tab.evaluate(() => document.querySelectorAll('td').length);
 
@@ -184,15 +217,15 @@ describe('waitForPageReady in real Chromium', () => {
     expect(elapsed).toBeLessThan(500);
   });
 
-  it('waits while a loading placeholder is shown', async () => {
-    const state = await openReady('/placeholder', (tab) =>
-      tab.evaluate(() => ({
-        placeholder: document.querySelector('[data-pdf-loading]') !== null,
-        cell: document.querySelector('td')?.textContent,
-      })),
-    );
-
-    expect(state).toEqual({ placeholder: false, cell: 'row' });
+  it.each([
+    ['is shown from the start', '/placeholder'],
+    ['appears while fonts are loading', '/placeholder-during-fonts'],
+    ['comes back for longer than the settle cap', '/placeholder-returns'],
+  ])('waits while a loading placeholder %s', async (_name, path) => {
+    expect(await openReady(path, placeholderAndRow)).toEqual({
+      placeholder: false,
+      cell: 'row',
+    });
   });
 
   it('waits for the DOM to stop changing', async () => {
@@ -228,6 +261,16 @@ describe('waitForPageReady in real Chromium', () => {
     );
 
     expect(loaded).toBe(true);
+  });
+
+  it('waits for fonts', async () => {
+    const state = await openReady('/slow-font', async (tab, elapsed) => ({
+      fonts: await tab.evaluate(() => document.fonts.status),
+      elapsed,
+    }));
+
+    expect(state.fonts).toBe('loaded');
+    expect(state.elapsed).toBeGreaterThanOrEqual(SLOW_MS - 200);
   });
 
   // clusterTask.ts answers cached assets itself through request interception.
