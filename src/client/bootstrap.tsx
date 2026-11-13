@@ -15,6 +15,7 @@ import {
 } from '../integration/endpoints';
 import { resolveInternalRouteKey } from '../common/integrationEndpoints';
 import FetchErrorFallback from './FetchErrorFallback';
+import { PDF_LOADING_ATTR, markPdfReady } from './pdfReady';
 
 import 'react/jsx-runtime';
 import 'react-intl';
@@ -151,12 +152,22 @@ const MetadataWrapper = () => {
   }, []);
 
   const { error, loading, data } = asyncState;
+
+  // Data (or an error) is in. The generator takes it from here: it waits for
+  // the template to mount and settle. Loading placeholders carry
+  // PDF_LOADING_ATTR so it cannot print while one is showing.
+  useEffect(() => {
+    if (!loading) {
+      markPdfReady();
+    }
+  }, [loading]);
+
   if (error) {
     return <FetchErrorFallback error={error} />;
   }
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div {...{ [PDF_LOADING_ATTR]: '' }}>Loading...</div>;
   }
 
   const props: ScalprumComponentProps<
@@ -172,6 +183,7 @@ const MetadataWrapper = () => {
     module: state.module,
     importName: state.importName,
     ErrorComponent: <FetchErrorFallback />,
+    fallback: <div {...{ [PDF_LOADING_ATTR]: '' }}>Loading...</div>,
   };
   return (
     // ensure CSS scope is applied
@@ -217,6 +229,7 @@ const App = () => {
             module="./LightwellLogomarkIcon"
             svgProps={{ width: 28, height: 28 }}
             ErrorComponent={<span />}
+            fallback={<span {...{ [PDF_LOADING_ATTR]: '' }} />}
           />
         </div>
       )}

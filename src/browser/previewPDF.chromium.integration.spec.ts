@@ -18,6 +18,7 @@ import webpack, { Configuration as WebpackConfiguration } from 'webpack';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
 import previewPdf from './previewPDF';
+import { trackRequests, waitForPageReady } from './pageReady';
 import renderTemplate from '../server/render-template';
 
 let mockBrowser: Browser;
@@ -43,6 +44,16 @@ const SENTINEL = 'QZJXKVW';
 const PAGES: Record<string, string> = {
   '/blank': '<!doctype html><html><body></body></html>',
   '/content': `<!doctype html><html><body><h1>${SENTINEL}</h1><p>${SENTINEL} must be printed.</p></body></html>`,
+  // Renders its content well after load with no network activity, then signals
+  // ready. A network-idle wait would print it blank; the readiness flag must not.
+  '/late': `<!doctype html><html><body><script>
+    window.__PDF_READY__ = false;
+    setTimeout(() => {
+      document.body.innerHTML = '<h1>${SENTINEL}</h1><p>${SENTINEL} rendered late.</p>';
+      window.__PDF_READY__ = true;
+      window.dispatchEvent(new Event('pdf-ready'));
+    }, 1500);
+  </script></body></html>`,
 };
 
 const PAYLOAD = {
@@ -288,6 +299,15 @@ describe('previewPdf against real Chromium', () => {
     }
   }, 180000);
 
+  it('waits for the page readiness flag before printing', async () => {
+    const late = await previewPdf(`${origin}/late`);
+
+    const painted = paintedCharacters(late);
+    for (const character of SENTINEL) {
+      expect(painted.has(character)).toBe(true);
+    }
+  }, 180000);
+
   /**
    * The end-to-end form of the incident: real production client bundle, real
    * renderTemplate, real browser. Asserts the state survives the whole path
@@ -317,6 +337,39 @@ describe('previewPdf against real Chromium', () => {
           '',
       );
       expect(reported).not.toBe('');
+
+      // The client must mark the page ready on its error path too, or the
+      // generator would wait out the browser timeout before failing the report.
+      await page.waitForFunction(
+        () =>
+          (window as unknown as { __PDF_READY__?: boolean }).__PDF_READY__ ===
+          true,
+        { timeout: 30000 },
+      );
+    } finally {
+      await page.close();
+    }
+  }, 180000);
+
+  /**
+   * The generator looks for the ready flag once, at DOMContentLoaded. That is
+   * only safe while the real bundle has already run by then (it is emitted as
+   * a deferred script), so check it against the genuine article.
+   */
+  it('finds the ready flag at DOMContentLoaded and waits for the app', async () => {
+    const page = await mockBrowser.newPage();
+    try {
+      const requests = trackRequests(page);
+      await page.goto(`${origin}/puppeteer`, { waitUntil: 'domcontentloaded' });
+      expect(await page.evaluate(() => typeof window.__PDF_READY__)).toBe(
+        'boolean',
+      );
+
+      await waitForPageReady(page, requests);
+
+      // Ready on the error path means the failure is already on the page for
+      // the generator's checks to read.
+      expect(await page.$('#crc-pdf-generator-err')).not.toBeNull();
     } finally {
       await page.close();
     }
