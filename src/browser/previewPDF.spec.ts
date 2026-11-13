@@ -9,6 +9,17 @@ const mockPage = {
   close: jest.fn(),
 };
 
+const mockRequests = { pending: jest.fn(), idle: jest.fn() };
+const mockTrackRequests = jest.fn((_page: unknown) => mockRequests);
+const mockWaitForPageReady = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(),
+);
+
+jest.mock('./pageReady', () => ({
+  trackRequests: (page: unknown) => mockTrackRequests(page),
+  waitForPageReady: (...args: unknown[]) => mockWaitForPageReady(...args),
+}));
+
 const mockExecute = jest.fn(
   (taskFn: ({ page }: { page: unknown }) => Promise<unknown>) =>
     taskFn({ page: mockPage }),
@@ -107,7 +118,7 @@ describe('previewPdf', () => {
   });
 
   describe('status check ordering', () => {
-    it('checks page status BEFORE network idle and PDF', async () => {
+    it('checks page status BEFORE waiting for readiness or the PDF', async () => {
       const callOrder: string[] = [];
       mockPage.goto.mockImplementation(() => {
         callOrder.push('goto');
@@ -118,6 +129,10 @@ describe('previewPdf', () => {
       });
       mockPage.waitForNetworkIdle.mockImplementation(() => {
         callOrder.push('waitForNetworkIdle');
+        return Promise.resolve();
+      });
+      mockWaitForPageReady.mockImplementation(() => {
+        callOrder.push('waitForPageReady');
         return Promise.resolve();
       });
       mockPage.pdf.mockImplementation(() => {
@@ -131,18 +146,46 @@ describe('previewPdf', () => {
 
       expect(callOrder).toContain('goto');
       expect(callOrder).not.toContain('waitForNetworkIdle');
+      expect(callOrder).not.toContain('waitForPageReady');
       expect(callOrder).not.toContain('pdf');
     });
   });
 
-  describe('network idle', () => {
-    it('waits for network idle after successful navigation', async () => {
+  describe('readiness', () => {
+    it('waits for page readiness instead of network idle', async () => {
       await previewPdf(TEST_URL);
 
-      expect(mockPage.waitForNetworkIdle).toHaveBeenCalledWith({
-        idleTime: 1000,
-        timeout: 120_000,
+      expect(mockWaitForPageReady).toHaveBeenCalledWith(mockPage, mockRequests);
+      expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
+    });
+
+    it('tracks requests from before navigation and prints once ready', async () => {
+      const callOrder: string[] = [];
+      mockTrackRequests.mockImplementationOnce(() => {
+        callOrder.push('trackRequests');
+        return mockRequests;
       });
+      mockPage.goto.mockImplementationOnce(() => {
+        callOrder.push('goto');
+        return Promise.resolve({ ok: () => true, statusText: () => 'OK' });
+      });
+      mockWaitForPageReady.mockImplementationOnce(() => {
+        callOrder.push('waitForPageReady');
+        return Promise.resolve();
+      });
+      mockPage.pdf.mockImplementationOnce(() => {
+        callOrder.push('pdf');
+        return Promise.resolve(new Uint8Array());
+      });
+
+      await previewPdf(TEST_URL);
+
+      expect(callOrder).toEqual([
+        'trackRequests',
+        'goto',
+        'waitForPageReady',
+        'pdf',
+      ]);
     });
   });
 
@@ -183,11 +226,11 @@ describe('previewPdf', () => {
       );
     });
 
-    it('navigates with networkidle2 and timeout', async () => {
+    it('navigates with domcontentloaded and timeout', async () => {
       await previewPdf(TEST_URL);
 
       expect(mockPage.goto).toHaveBeenCalledWith(TEST_URL, {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: 120_000,
       });
     });

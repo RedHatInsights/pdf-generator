@@ -24,6 +24,17 @@ const mockPage = {
   close: jest.fn(),
 };
 
+const mockRequests = { pending: jest.fn(), idle: jest.fn() };
+const mockTrackRequests = jest.fn((_page: unknown) => mockRequests);
+const mockWaitForPageReady = jest.fn((..._args: unknown[]) =>
+  Promise.resolve(),
+);
+
+jest.mock('./pageReady', () => ({
+  trackRequests: (page: unknown) => mockTrackRequests(page),
+  waitForPageReady: (...args: unknown[]) => mockWaitForPageReady(...args),
+}));
+
 jest.mock('../server/cluster', () => ({
   cluster: {
     queue: jest.fn(
@@ -175,6 +186,55 @@ describe('generatePdf', () => {
     mockPage.evaluate.mockResolvedValue(undefined);
     mockPage.pdf.mockResolvedValue(Buffer.from(''));
     mockPage.close.mockResolvedValue(undefined);
+  });
+
+  describe('page readiness', () => {
+    it('navigates without a network-idle tail and prints once ready', async () => {
+      const callOrder: string[] = [];
+      mockTrackRequests.mockImplementationOnce(() => {
+        callOrder.push('trackRequests');
+        return mockRequests;
+      });
+      mockPage.goto.mockImplementationOnce(() => {
+        callOrder.push('goto');
+        return Promise.resolve({ status: () => 200, statusText: () => 'OK' });
+      });
+      mockWaitForPageReady.mockImplementationOnce(() => {
+        callOrder.push('waitForPageReady');
+        return Promise.resolve();
+      });
+      mockPage.pdf.mockImplementationOnce(() => {
+        callOrder.push('pdf');
+        return Promise.resolve(Buffer.from(''));
+      });
+
+      await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
+
+      expect(mockPage.goto).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ waitUntil: 'domcontentloaded' }),
+      );
+      expect(mockPage.waitForNetworkIdle).not.toHaveBeenCalled();
+      expect(mockWaitForPageReady).toHaveBeenCalledWith(mockPage, mockRequests);
+      expect(callOrder).toEqual([
+        'trackRequests',
+        'goto',
+        'waitForPageReady',
+        'pdf',
+      ]);
+    });
+
+    it('does not wait for readiness when the page status is bad', async () => {
+      mockPage.goto.mockResolvedValueOnce({
+        status: () => 500,
+        statusText: () => 'Internal Server Error',
+      });
+
+      await expect(
+        generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager()),
+      ).rejects.toThrow(PdfGenerationError);
+      expect(mockWaitForPageReady).not.toHaveBeenCalled();
+    });
   });
 
   describe('successful generation', () => {
