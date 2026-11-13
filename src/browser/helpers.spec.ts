@@ -66,3 +66,38 @@ describe('CHROMIUM_PATH', () => {
     ).not.toThrow();
   });
 });
+
+describe('print layout', () => {
+  const helpers = loadHelpers({ isProduction: false });
+
+  it('gives the page A4 minus the margins', () => {
+    expect(
+      helpers.printableArea(false, {
+        top: '80px',
+        bottom: '54px',
+        left: '28px',
+        right: '28px',
+      }),
+    ).toEqual({ width: 738, height: 989 });
+  });
+
+  it('treats missing side margins as zero', () => {
+    expect(
+      helpers.printableArea(false, { top: '54px', bottom: '54px' }),
+    ).toEqual({ width: 794, height: 1015 });
+  });
+
+  it('swaps the paper for landscape', () => {
+    expect(
+      helpers.printableArea(true, { top: '54px', bottom: '54px' }),
+    ).toEqual({ width: 1123, height: 686 });
+  });
+
+  it('is on unless the template sends a literal false', () => {
+    expect(helpers.usesPrintLayout(undefined)).toBe(true);
+    expect(helpers.usesPrintLayout({})).toBe(true);
+    expect(helpers.usesPrintLayout({ printLayout: true })).toBe(true);
+    expect(helpers.usesPrintLayout({ printLayout: 'false' })).toBe(true);
+    expect(helpers.usesPrintLayout({ printLayout: false })).toBe(false);
+  });
+});
