@@ -105,7 +105,6 @@ describe('Status endpoint error propagation', () => {
       const collectionId = 'test-failed-collection';
       const failedComponent: PDFComponent = {
         status: PdfStatus.Failed,
-        filepath: '',
         collectionId,
         componentId: 'test-component-1',
         error: 'Template rendering failed: missing module',
@@ -126,7 +125,6 @@ describe('Status endpoint error propagation', () => {
       const collectionId = 'test-component-error';
       const failedComponent: PDFComponent = {
         status: PdfStatus.Failed,
-        filepath: '',
         collectionId,
         componentId: 'comp-1',
         error: 'Puppeteer timeout after 60s',
@@ -147,7 +145,6 @@ describe('Status endpoint error propagation', () => {
       const collectionId = 'test-generating';
       const generatingComponent: PDFComponent = {
         status: PdfStatus.Generating,
-        filepath: '',
         collectionId,
         componentId: 'comp-gen-1',
       };
@@ -165,14 +162,12 @@ describe('Status endpoint error propagation', () => {
       const collectionId = 'test-partial-failure';
       const okComponent: PDFComponent = {
         status: PdfStatus.Generated,
-        filepath: '/tmp/ok.pdf',
         collectionId,
         componentId: 'comp-ok',
         numPages: 3,
       };
       const failedComponent: PDFComponent = {
         status: PdfStatus.Failed,
-        filepath: '',
         collectionId,
         componentId: 'comp-fail',
         error: 'Network error fetching data',

@@ -55,7 +55,6 @@ describe('handleTaskError', () => {
     expect(UpdateStatus).toHaveBeenCalledWith({
       collectionId: 'coll-data',
       status: PdfStatus.Failed,
-      filepath: '',
       componentId: 'comp-data',
       order: 2,
       error: 'task failed',
@@ -91,7 +90,6 @@ describe('handleTaskError', () => {
     expect(UpdateStatus).toHaveBeenCalledWith({
       collectionId: 'coll-err',
       status: PdfStatus.Failed,
-      filepath: '',
       componentId: 'comp-err',
       order: undefined,
       error: 'generation failed',
