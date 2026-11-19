@@ -405,7 +405,8 @@
             "$ref": "#/components/schemas/PdfStatus"
           },
           "filepath": {
-            "type": "string"
+            "type": "string",
+            "description": "Always empty. PDFs are kept in object storage, not on the pod; fetch them from the download endpoint."
           },
           "collectionId": {
             "type": "string"
@@ -464,13 +465,13 @@
               {
                 "collectionId": "01197696-ca1b-4beb-80d2-6501126cb89e",
                 "status": "Generated",
-                "filepath": "/tmp/report_78584d8d-c5b9-444d-b2eb-b7ffc640d620.pdf",
+                "filepath": "",
                 "componentId": "78584d8d-c5b9-444d-b2eb-b7ffc640d620"
               },
               {
                 "collectionId": "01197696-ca1b-4beb-80d2-6501126cb89e",
                 "status": "Generated",
-                "filepath": "/tmp/report_99b81a67-a9f5-4a1e-82aa-1ef1840bce28.pdf",
+                "filepath": "",
                 "componentId": "99b81a67-a9f5-4a1e-82aa-1ef1840bce28"
               }
             ],

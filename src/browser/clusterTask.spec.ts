@@ -263,6 +263,24 @@ describe('generatePdf', () => {
       );
     });
 
+    it('uploads the printed PDF from memory, without writing a file', async () => {
+      const { store } = jest.requireMock('../common/store');
+      const printed = Buffer.from('%PDF-printed');
+      mockPage.pdf.mockResolvedValueOnce(printed);
+      const req = makePdfRequest();
+
+      await generatePdf(req, 'coll-memory', 1, makeTokenManager());
+
+      expect(mockPage.pdf.mock.calls[0][0]).not.toHaveProperty('path');
+      expect(store.uploadPDF).toHaveBeenCalledWith(req.uuid, printed);
+      expect(UpdateStatus).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          status: PdfStatus.Generated,
+          filepath: '',
+        }),
+      );
+    });
+
     it('closes the page after success', async () => {
       await generatePdf(makePdfRequest(), 'coll-1', 1, makeTokenManager());
       expect(mockPage.close).toHaveBeenCalled();
