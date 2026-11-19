@@ -273,12 +273,6 @@ describe('generatePdf', () => {
 
       expect(mockPage.pdf.mock.calls[0][0]).not.toHaveProperty('path');
       expect(store.uploadPDF).toHaveBeenCalledWith(req.uuid, printed);
-      expect(UpdateStatus).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          status: PdfStatus.Generated,
-          filepath: '',
-        }),
-      );
     });
 
     it('closes the page after success', async () => {

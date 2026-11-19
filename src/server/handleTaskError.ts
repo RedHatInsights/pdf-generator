@@ -40,7 +40,6 @@ export async function handleTaskError(
     await UpdateStatus({
       collectionId,
       status: PdfStatus.Failed,
-      filepath: '',
       componentId,
       order,
       error: message,

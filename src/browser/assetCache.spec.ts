@@ -1,14 +1,22 @@
-import { AssetCache } from './assetCache';
+import { ASSET_CACHE_TTL_MS, AssetCache } from './assetCache';
 
-const asset = (bytes: number) => ({
-  body: Buffer.alloc(bytes),
+const asset = () => ({
+  body: Buffer.from('console.log("asset")'),
   contentType: 'application/javascript',
 });
 
 describe('AssetCache', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('returns what was stored', () => {
-    const cache = new AssetCache(100);
-    const stored = asset(10);
+    const cache = new AssetCache(1000);
+    const stored = asset();
     cache.set('a.js', stored);
 
     expect(cache.has('a.js')).toBe(true);
@@ -16,70 +24,63 @@ describe('AssetCache', () => {
     expect(cache.get('missing.js')).toBeUndefined();
   });
 
-  it('evicts the oldest assets once over the size limit', () => {
-    const cache = new AssetCache(100);
-    cache.set('a.js', asset(40));
-    cache.set('b.js', asset(40));
-    cache.set('c.js', asset(40));
-
-    expect(cache.has('a.js')).toBe(false);
-    expect(cache.has('b.js')).toBe(true);
-    expect(cache.has('c.js')).toBe(true);
-    expect(cache.totalBytes).toBe(80);
-  });
-
-  it('keeps an asset that was read recently', () => {
-    const cache = new AssetCache(100);
-    cache.set('a.js', asset(40));
-    cache.set('b.js', asset(40));
-    cache.get('a.js');
-    cache.set('c.js', asset(40));
-
-    expect(cache.has('a.js')).toBe(true);
-    expect(cache.has('b.js')).toBe(false);
-    expect(cache.has('c.js')).toBe(true);
-  });
-
-  it('evicts as many assets as a large one needs', () => {
-    const cache = new AssetCache(100);
-    cache.set('a.js', asset(30));
-    cache.set('b.js', asset(30));
-    cache.set('c.js', asset(30));
-    cache.set('big.js', asset(90));
-
-    expect(cache.size).toBe(1);
-    expect(cache.has('big.js')).toBe(true);
-    expect(cache.totalBytes).toBe(90);
-  });
-
-  it('does not cache an asset larger than the limit', () => {
-    const cache = new AssetCache(100);
-    cache.set('a.js', asset(40));
-    cache.set('huge.js', asset(101));
-
-    expect(cache.has('huge.js')).toBe(false);
-    expect(cache.has('a.js')).toBe(true);
-    expect(cache.totalBytes).toBe(40);
-  });
-
-  it('replaces an asset stored twice without counting it twice', () => {
-    const cache = new AssetCache(100);
-    cache.set('a.js', asset(40));
-    cache.set('a.js', asset(60));
-
-    expect(cache.size).toBe(1);
-    expect(cache.totalBytes).toBe(60);
-  });
-
-  it('stays within the limit however many assets it is given', () => {
+  it('keeps an asset until its time is up', () => {
     const cache = new AssetCache(1000);
-    for (let i = 0; i < 500; i++) {
-      cache.set(`chunk.${i}.js`, asset(64));
-    }
+    cache.set('a.js', asset());
 
-    expect(cache.totalBytes).toBeLessThanOrEqual(1000);
-    expect(cache.size).toBe(15);
-    expect(cache.has('chunk.499.js')).toBe(true);
-    expect(cache.has('chunk.0.js')).toBe(false);
+    jest.advanceTimersByTime(999);
+    expect(cache.has('a.js')).toBe(true);
+
+    jest.advanceTimersByTime(1);
+    expect(cache.has('a.js')).toBe(false);
+    expect(cache.get('a.js')).toBeUndefined();
+    expect(cache.size).toBe(0);
+  });
+
+  it('does not extend the time when an asset is read', () => {
+    const cache = new AssetCache(1000);
+    cache.set('a.js', asset());
+
+    jest.advanceTimersByTime(600);
+    expect(cache.get('a.js')).toBeDefined();
+
+    jest.advanceTimersByTime(400);
+    expect(cache.get('a.js')).toBeUndefined();
+  });
+
+  it('starts the time again when an asset is cached again', () => {
+    const cache = new AssetCache(1000);
+    cache.set('a.js', asset());
+
+    jest.advanceTimersByTime(1000);
+    const fresh = asset();
+    cache.set('a.js', fresh);
+
+    jest.advanceTimersByTime(999);
+    expect(cache.get('a.js')).toBe(fresh);
+  });
+
+  it('drops expired assets that are never read again', () => {
+    const cache = new AssetCache(1000);
+    cache.set('old-release.1.js', asset());
+    cache.set('old-release.2.js', asset());
+
+    jest.advanceTimersByTime(1000);
+    expect(cache.size).toBe(2);
+
+    cache.set('new-release.js', asset());
+    expect(cache.size).toBe(1);
+    expect(cache.has('new-release.js')).toBe(true);
+  });
+
+  it('keeps assets for five minutes by default', () => {
+    const cache = new AssetCache();
+    cache.set('a.js', asset());
+
+    jest.advanceTimersByTime(ASSET_CACHE_TTL_MS - 1);
+    expect(cache.has('a.js')).toBe(true);
+
+    jest.advanceTimersByTime(1);
+    expect(cache.has('a.js')).toBe(false);
   });
 });

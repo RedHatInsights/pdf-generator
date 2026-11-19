@@ -44,11 +44,6 @@ const formatTimeToEnglish = (milliseconds: number): string => {
   )} ${largestUnit}`;
 };
 
-export type PdfEntry = {
-  status: string;
-  filepath: string;
-};
-
 export type PdfCollection = {
   [id: string]: PDFComponentGroup;
 };
@@ -61,7 +56,6 @@ export type PDFComponentGroup = {
 };
 export type PDFComponent = {
   status: PdfStatus;
-  filepath: string;
   collectionId: string;
   componentId: string;
   error?: string;

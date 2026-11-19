@@ -70,7 +70,6 @@ async function runPageTask(
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Failed,
-          filepath: '',
           componentId,
           order,
           error: 'Collection failed before this component started',
@@ -81,7 +80,6 @@ async function runPageTask(
       try {
         await UpdateStatus({
           status: PdfStatus.Generating,
-          filepath: '',
           order,
           componentId,
           collectionId,
@@ -337,7 +335,6 @@ async function runPageTask(
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Generated,
-          filepath: '',
           componentId,
           numPages,
           order,
