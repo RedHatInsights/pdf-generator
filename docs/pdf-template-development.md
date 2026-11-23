@@ -295,3 +295,27 @@ additionalData: {
   printLayout: false,
 }
 ```
+
+### Static render
+
+The generator renders your template once to static HTML and prints that, instead of keeping it mounted. Your components produce the same markup as before, but none of them keep state, effects or layout reads alive, which is a large part of the render time and memory of a report with thousands of table cells.
+
+Nothing the template does after its first render runs: no `useEffect`, no state update, no ref callback, no event handler. Render everything from `asyncData` and `additionalData`, as an SSR-compatible template already does.
+
+The template renders on its own, so it only sees context from providers it renders itself.
+
+If the generator cannot reproduce the markup exactly, or the template throws while rendering, the template is mounted as before. Examples are HTML nested inside an SVG `foreignObject`, raw HTML that is not well-formed, and an HTML tag written in upper case.
+
+If your template depends on something that happens after its first render, such as a chart that measures itself, opt out in `additionalData`:
+
+```js
+additionalData: {
+  staticRender: false,
+}
+```
+
+### Table cells
+
+PatternFly positions every table cell (`position: relative`), and Chrome prints each positioned box as its own layer. On large tables that is most of the print time, so the generator leaves body cells of PatternFly tables unpositioned.
+
+Nothing changes unless a cell holds an absolutely positioned child. If one of yours does, set `position: 'relative'` on that cell's `style`.

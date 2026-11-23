@@ -16,7 +16,7 @@ All payload fields are validated server-side before PDF generation begins. Inval
 | `scope` | Yes | Alphanumeric identifier (letters, digits, `_`, `-`, `/`, `@`). |
 | `module` | Yes | Relative module path starting with `./` (e.g. `./PdfEntry`). No path traversal (`..`). |
 | `fetchDataParams` | No | Object passed to your template's `fetchData` function as the second argument. |
-| `additionalData` | No | Arbitrary key-value pairs passed through to the template. `printLayout: false` opts the template out of [print layout](./pdf-template-development.md#print-layout). |
+| `additionalData` | No | Arbitrary key-value pairs passed through to the template. `printLayout: false` opts the template out of [print layout](./pdf-template-development.md#print-layout), and `staticRender: false` out of [static render](./pdf-template-development.md#static-render). |
 
 ## Using Chrome UI API
 
