@@ -1,14 +1,41 @@
 /**
- * Runs parseAsRendered in real Chromium. Whether static markup becomes the DOM
- * React would have built depends on the browser's parsers, which no mock can
- * stand in for.
+ * Runs renderStatically in real Chromium with real React. It builds DOM, so
+ * only a browser can show that the copy is what React would have mounted.
  */
-import { createElement } from 'react';
+import fs from 'fs';
+import path from 'path';
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { parseAsRendered, renderToMarkup } from './staticRender';
+import ts from 'typescript';
+import { PDF_LOADING_ATTR } from './pdfReady';
 
 let browser: Browser;
 let page: Page;
+
+/** staticRender.ts compiled for the page, with its imports mapped to globals. */
+const moduleForPage = () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, 'staticRender.ts'),
+    'utf8',
+  );
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  });
+  return `window.staticRender = (() => {
+    const exports = {};
+    const modules = {
+      react: React,
+      'react-dom': ReactDOM,
+      'react-dom/client': ReactDOM,
+      './pdfReady': { PDF_LOADING_ATTR: ${JSON.stringify(PDF_LOADING_ATTR)} },
+    };
+    const require = (name) => modules[name];
+    ${outputText}
+    return exports;
+  })();`;
+};
 
 beforeAll(async () => {
   browser = await puppeteer.launch({
@@ -16,6 +43,15 @@ beforeAll(async () => {
   });
   page = await browser.newPage();
   await page.setContent('<!doctype html><html><body></body></html>');
+  // The browser builds of React, which define the React and ReactDOM globals.
+  for (const [name, file] of [
+    ['react', 'umd/react.production.min.js'],
+    ['react-dom', 'umd/react-dom.production.min.js'],
+  ]) {
+    const root = path.dirname(require.resolve(`${name}/package.json`));
+    await page.addScriptTag({ path: path.join(root, file) });
+  }
+  await page.addScriptTag({ content: moduleForPage() });
 }, 60000);
 
 afterAll(async () => {
@@ -23,91 +59,77 @@ afterAll(async () => {
 });
 
 /**
- * Parses `html` in the page and returns what `probe` reads from the result,
- * or null when the markup was rejected.
+ * Runs `scenario` in the page. It gets React's createElement as `h` and
+ * returns the template to render; `probe` reads the result, or the scenario
+ * resolves to null when the template is to be mounted instead.
  */
-const parse = <T>(html: string, probe: (parsed: HTMLElement) => T) =>
-  page.evaluate(
-    `(() => {
-      const parsed = (${parseAsRendered.toString()})(${JSON.stringify(html)});
-      return parsed ? (${probe.toString()})(parsed) : null;
-    })()`,
-  ) as Promise<T | null>;
+const render = <T>(scenario: string, probe: string) =>
+  page.evaluate(`(() => {
+    const h = React.createElement;
+    const Template = (${scenario})(h);
+    const rendered = staticRender.renderStatically(Template, {});
+    return rendered ? (${probe})(rendered) : null;
+  })()`) as Promise<T | null>;
 
-const outline = (parsed: HTMLElement) =>
-  Array.from(parsed.querySelectorAll('*'), (element) => {
-    let depth = 0;
-    for (let up = element.parentNode; up !== parsed; up = up!.parentNode) {
-      depth++;
-    }
-    return `${depth}:${element.localName}`;
-  });
-
-describe('parseAsRendered', () => {
-  it('builds the elements as real HTML elements', async () => {
-    const result = await parse(
-      '<div class="report"><h1>Title</h1><br/><input disabled=""/></div>',
-      (parsed) => ({
-        html: parsed.innerHTML,
-        isDiv: parsed.firstElementChild instanceof HTMLDivElement,
-        disabled: parsed.querySelector('input')?.disabled,
-      }),
+describe('renderStatically', () => {
+  it('copies the elements React builds', async () => {
+    const html = await render<string>(
+      `(h) => () => h('table', { className: 'report' },
+        h('tbody', null, h('tr', null, h('td', { title: 'a' }, 'host-', 1))))`,
+      `(rendered) => rendered.innerHTML`,
     );
 
-    expect(result).toEqual({
-      html: '<div class="report"><h1>Title</h1><br><input disabled=""></div>',
-      isDiv: true,
-      disabled: true,
-    });
+    expect(html).toBe(
+      '<table class="report"><tbody><tr><td title="a">host-1</td></tr></tbody></table>',
+    );
   });
 
-  it('keeps nesting the HTML parser would rearrange', async () => {
-    expect(await parse('<p>intro<div>block</div>outro</p>', outline)).toEqual([
-      '0:p',
-      '1:div',
+  it('keeps nesting and tags that parsing HTML would change', async () => {
+    const outline = await render<string[]>(
+      `(h) => () => h('div', null,
+        h('p', null, 'intro', h('div', null, 'block')),
+        h('table', null, h('thead', null, h('th', null, 'Name'))),
+        h('TEXT', null, 'label'))`,
+      `(rendered) => Array.from(rendered.querySelectorAll('*'), (element) => {
+        let depth = 0;
+        for (let up = element.parentNode; up !== rendered; up = up.parentNode) depth++;
+        return depth + ':' + element.localName;
+      })`,
+    );
+
+    expect(outline).toEqual([
+      '0:div',
+      '1:p',
+      '2:div',
+      '1:table',
+      '2:thead',
+      '3:th',
+      '1:text',
     ]);
-    expect(
-      await parse(
-        '<table><thead><th>Name</th></thead><tr><td>a</td></tr></table>',
-        outline,
-      ),
-    ).toEqual(['0:table', '1:thead', '2:th', '1:tr', '2:td']);
   });
 
-  it('gives charts the SVG namespace', async () => {
-    const result = await parse(
-      '<div><svg viewBox="0 0 1 1"><linearGradient id="g"></linearGradient><path d="M0 0"></path></svg></div>',
-      (parsed) => ({
-        svg: parsed.querySelector('svg') instanceof SVGSVGElement,
-        gradient:
-          parsed.querySelector('linearGradient') instanceof
-          SVGLinearGradientElement,
-      }),
-    );
-
-    expect(result).toEqual({ svg: true, gradient: true });
-  });
-
-  it('accepts an svg that names its own namespace', async () => {
+  it('keeps charts as SVG', async () => {
     expect(
-      await parse(
-        '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"></path></svg>',
-        (parsed) => parsed.firstElementChild instanceof SVGSVGElement,
+      await render<boolean>(
+        `(h) => () => h('svg', { viewBox: '0 0 1 1' }, h('path', { d: 'M0 0' }))`,
+        `(rendered) => rendered.firstElementChild instanceof SVGSVGElement`,
       ),
     ).toBe(true);
   });
 
   it('keeps report data as text', async () => {
-    const Cell = ({ name }: { name: string }) =>
-      createElement('td', { title: name }, name);
-    const name = '"><img src=x onerror="window.injected = true">&amp;<b>';
+    const name =
+      '"><img src=x onerror="window.injected = true"><script>x</script>';
 
-    const result = await parse(renderToMarkup(Cell, { name }), (parsed) => ({
-      text: parsed.textContent,
-      title: parsed.querySelector('td')?.title,
-      elements: parsed.querySelectorAll('*').length,
-      injected: (window as { injected?: boolean }).injected ?? false,
-    }));
+    const result = await render<{ text: string; elements: number }>(
+      `(h) => () => h('td', { title: ${JSON.stringify(name)} }, ${JSON.stringify(name)})`,
+      `(rendered) => ({
+        text: rendered.textContent,
+        title: rendered.querySelector('td').title,
+        elements: rendered.querySelectorAll('*').length,
+        injected: window.injected ?? false,
+      })`,
+    );
 
     expect(result).toEqual({
       text: name,
@@ -117,15 +139,60 @@ describe('parseAsRendered', () => {
     });
   });
 
-  it.each([
-    ['is not well-formed', '<div><br></div>'],
-    ['uses an entity XML does not know', '<p>a&nbsp;b</p>'],
-    [
-      'puts HTML inside an SVG',
-      '<svg><foreignObject><p>x</p></foreignObject></svg>',
-    ],
-    ['writes an HTML tag in upper case', '<DIV>x</DIV>'],
-  ])('rejects markup that %s', async (_reason, html) => {
-    expect(await parse(html, () => true)).toBeNull();
+  it('includes what the effects of the first render write to the DOM', async () => {
+    expect(
+      await render<string>(
+        `(h) => () => {
+          const ref = React.useRef(null);
+          React.useEffect(() => { ref.current.dataset.measured = 'yes'; }, []);
+          return h('p', { ref }, 'text');
+        }`,
+        `(rendered) => rendered.firstElementChild.dataset.measured`,
+      ),
+    ).toBe('yes');
   });
+
+  it('copies the first render only, not a later state update', async () => {
+    expect(
+      await render<string>(
+        `(h) => () => {
+          const [label, setLabel] = React.useState('first');
+          React.useEffect(() => setLabel('later'), []);
+          return h('p', null, label);
+        }`,
+        `(rendered) => rendered.textContent`,
+      ),
+    ).toBe('first');
+  });
+
+  it('leaves nothing mounted', async () => {
+    expect(
+      await render<boolean>(
+        `(h) => () => {
+          React.useEffect(() => () => { window.cleanedUp = true; }, []);
+          return h('p', null, 'done');
+        }`,
+        `() => window.cleanedUp === true`,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ['throws', `(h) => () => { throw new Error('boom'); }`],
+    [
+      'throws inside a Suspense boundary',
+      `(h) => () => h(React.Suspense, { fallback: h('p', null, 'Loading...') },
+        h(() => { throw new Error('boom'); }))`,
+    ],
+    [
+      'is still showing a loading placeholder',
+      `(h) => () => h('div', { ${JSON.stringify(PDF_LOADING_ATTR)}: '' }, 'Loading...')`,
+    ],
+    ['renders nothing', `(h) => () => null`],
+  ])(
+    'asks for the template to be mounted when it %s',
+    async (_case, scenario) => {
+      expect(await render(scenario, `() => true`)).toBeNull();
+    },
+  );
 });

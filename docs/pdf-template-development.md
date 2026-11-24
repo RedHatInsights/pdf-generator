@@ -298,15 +298,15 @@ additionalData: {
 
 ### Static render
 
-The generator renders your template once to static HTML and prints that, instead of keeping it mounted. Your components produce the same markup as before, but none of them keep state, effects or layout reads alive, which is a large part of the render time and memory of a report with thousands of table cells.
+The generator builds your template once off-screen, copies the finished elements into the page and unmounts it. React creates the elements exactly as it does when it mounts the template, but none of your components stay alive while the report prints, which is a large part of the render time and memory of a report with thousands of table cells.
 
-Nothing the template does after its first render runs: no `useEffect`, no state update, no ref callback, no event handler. Render everything from `asyncData` and `additionalData`, as an SSR-compatible template already does.
+Only the first render is printed. Its effects run, but a state update made after it (from an effect, a timer or a request) is not included, and the copy has no event handlers. Render everything from `asyncData` and `additionalData`.
 
-The template renders on its own, so it only sees context from providers it renders itself.
+The template renders on its own, so it only sees context from providers it renders itself. Code that measures the page sees an off-screen tree, and the contents of a `canvas` are not copied.
 
-If the generator cannot reproduce the markup exactly, or the template throws while rendering, the template is mounted as before. Examples are HTML nested inside an SVG `foreignObject`, raw HTML that is not well-formed, and an HTML tag written in upper case.
+The template is mounted on the page as before if it throws, renders nothing, or is still showing a placeholder marked with `data-pdf-loading`.
 
-If your template depends on something that happens after its first render, such as a chart that measures itself, opt out in `additionalData`:
+If your template depends on something that happens after its first render, such as a lazy-loaded part or a chart that measures itself, opt out in `additionalData`:
 
 ```js
 additionalData: {

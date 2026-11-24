@@ -1,11 +1,8 @@
 /*
  * PatternFly positions every table cell, and Chrome prints each positioned box
- * as its own layer. On a table with thousands of cells that is most of the
- * print time. A printed table needs none of it, so body cells are unpositioned
- * for every PatternFly version (pf-v5-c-table, pf-v6-c-table, ...).
- *
- * A template that needs a positioned cell sets `position` inline.
+ * as its own layer, which is most of the print time on a large table.
+ * A cell that needs to be positioned sets `position` inline.
  */
-table[class*='-c-table'] tbody > tr > :is(td, th) {
+table[class*='-c-table'] > tbody > tr > :is(td, th) {
   position: static;
 }
