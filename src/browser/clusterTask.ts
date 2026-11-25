@@ -1,4 +1,3 @@
-import os from 'os';
 import { PdfRequestBody } from '../common/types';
 import { apiLogger } from '../common/logging';
 import {
@@ -25,6 +24,7 @@ import { TokenManager } from './tokenRefresh';
 import { BROWSER_TIMEOUT } from '../common/constants';
 import { ComponentOutcome, recordGeneratedPdf } from '../common/metrics';
 import { trackRequests, waitForPageReady } from './pageReady';
+import { AssetCache } from './assetCache';
 
 /**
  * Returned from the page when it produced nothing a reader would recognise as a
@@ -40,16 +40,11 @@ function outcomeFor(error: string): ComponentOutcome {
     : ComponentOutcome.Failed;
 }
 
-const assetCache = new Map<string, { body: Buffer; contentType: string }>();
+const assetCache = new AssetCache();
 
 function assetCacheKey(url: string): string {
   return url.split('?')[0];
 }
-
-const getNewPdfName = (id: string) => {
-  const pdfFilename = `report_${id}.pdf`;
-  return `${os.tmpdir()}/${pdfFilename}`;
-};
 
 async function runPageTask(
   {
@@ -62,7 +57,6 @@ async function runPageTask(
   }: PdfRequestBody,
   collectionId: string,
   order: number,
-  pdfPath: string,
   tokenManager: TokenManager,
   authCookie?: string,
 ): Promise<void> {
@@ -76,7 +70,6 @@ async function runPageTask(
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Failed,
-          filepath: '',
           componentId,
           order,
           error: 'Collection failed before this component started',
@@ -87,7 +80,6 @@ async function runPageTask(
       try {
         await UpdateStatus({
           status: PdfStatus.Generating,
-          filepath: '',
           order,
           componentId,
           collectionId,
@@ -321,8 +313,8 @@ async function runPageTask(
           lightwellSvg,
         );
 
+        // No `path`: the PDF is uploaded from memory, never written to disk.
         const buffer = await page.pdf({
-          path: pdfPath,
           format: 'a4',
           printBackground: true,
           margin,
@@ -336,14 +328,13 @@ async function runPageTask(
           tagged: false,
           timeout: BROWSER_TIMEOUT,
         });
-        await store.uploadPDF(componentId, pdfPath);
+        await store.uploadPDF(componentId, buffer);
         const pdfDoc = await PDFDocument.load(buffer);
         const numPages = pdfDoc.getPages().length;
         apiLogger.debug(`Generated PDF with ${numPages} pages`);
         await UpdateStatus({
           collectionId,
           status: PdfStatus.Generated,
-          filepath: pdfPath,
           componentId,
           numPages,
           order,
@@ -371,13 +362,5 @@ export const generatePdf = async (
   tokenManager: TokenManager,
   authCookie?: string,
 ): Promise<void> => {
-  const pdfPath = getNewPdfName(pdfRequest.uuid);
-  await runPageTask(
-    pdfRequest,
-    collectionId,
-    order,
-    pdfPath,
-    tokenManager,
-    authCookie,
-  );
+  await runPageTask(pdfRequest, collectionId, order, tokenManager, authCookie);
 };

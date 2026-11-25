@@ -12,7 +12,6 @@ describe('Pdf Cache updates', () => {
   });
   const cache: PDFComponent = {
     status: PdfStatus.Failed,
-    filepath: '',
     collectionId: '7855a523-fc64-4e51-910a-b1ff3918b440',
     componentId: 'fb99bc16-4cdc-4200-afbf-479d904ee987',
     numPages: 0,
@@ -37,14 +36,12 @@ describe('Pdf Cache updates', () => {
       .mockResolvedValue(undefined);
     const comp: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'blah',
       collectionId: '9855a523-fc64-4e51-910a-b1ff3918b440',
       componentId: 'fb99bc16-4cdc-4200-afbf-479d904ee987',
       numPages: 5,
     };
     const another: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'blah',
       collectionId: '9855a523-fc64-4e51-910a-b1ff3918b440',
       componentId: 'aaaaaaa-4cdc-4200-afbf-479d904ee987',
       numPages: 5,
@@ -79,7 +76,6 @@ describe('Pdf Cache updates', () => {
   it('should reset a collection with no expectedLength', async () => {
     const noExp: PDFComponent = {
       status: PdfStatus.Generating,
-      filepath: 'blah',
       collectionId: '1055a523-fc64-4e51-910a-b1ff3918b440',
       componentId: 'fb99bc16-4cdc-4200-afbf-479d904ee987',
       numPages: 5,
@@ -97,7 +93,6 @@ describe('Pdf Cache updates', () => {
     const collId = 'order-test-fc64-4e51-910a-b1ff3918b440';
     const comp1: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'page1.pdf',
       collectionId: collId,
       componentId: 'comp-1',
       numPages: 1,
@@ -105,7 +100,6 @@ describe('Pdf Cache updates', () => {
     };
     const comp2: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'page2.pdf',
       collectionId: collId,
       componentId: 'comp-2',
       numPages: 1,
@@ -113,7 +107,6 @@ describe('Pdf Cache updates', () => {
     };
     const comp3: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'page3.pdf',
       collectionId: collId,
       componentId: 'comp-3',
       numPages: 1,
@@ -134,7 +127,6 @@ describe('Pdf Cache updates', () => {
     const collId = 'replace-order-fc64-4e51-910a-b1ff3918b440';
     const original: PDFComponent = {
       status: PdfStatus.Generating,
-      filepath: '',
       collectionId: collId,
       componentId: 'comp-replace',
       numPages: 0,
@@ -145,7 +137,6 @@ describe('Pdf Cache updates', () => {
     // Simulate Kafka update that includes order (the fix)
     const updated: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'done.pdf',
       collectionId: collId,
       componentId: 'comp-replace',
       numPages: 2,
@@ -166,7 +157,6 @@ describe('Pdf Cache updates', () => {
   it('should return false for isCollectionFailed when collection is still generating', () => {
     const genComp: PDFComponent = {
       status: PdfStatus.Generating,
-      filepath: '',
       collectionId: 'gen-collection-id',
       componentId: 'gen-component-id',
       numPages: 0,
@@ -183,14 +173,12 @@ describe('Pdf Cache updates', () => {
     const mergeId = 'merge-fail-fc64-4e51-910a-b1ff3918b440';
     const comp1: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'a.pdf',
       collectionId: mergeId,
       componentId: 'merge-comp-1',
       numPages: 1,
     };
     const comp2: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'b.pdf',
       collectionId: mergeId,
       componentId: 'merge-comp-2',
       numPages: 1,
@@ -215,7 +203,6 @@ describe('Pdf Cache updates', () => {
     const safeId = 'merge-safe-fc64-4e51-910a-b1ff3918b440';
     const comp: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'a.pdf',
       collectionId: safeId,
       componentId: 'safe-comp-1',
       numPages: 1,
@@ -234,7 +221,6 @@ describe('Pdf Cache updates', () => {
   it('should set the length properly when a collection has not been added directly', async () => {
     const notAdded: PDFComponent = {
       status: PdfStatus.Generated,
-      filepath: 'blah',
       collectionId: '2255a523-fc64-6e51-910a-b1ff3918b440',
       componentId: '11aaaaa-4cdc-4200-afbf-479d904ee987',
       numPages: 5,
@@ -258,8 +244,6 @@ function makeComponent(
 ): PDFComponent {
   return {
     status,
-    filepath:
-      status === PdfStatus.Generated ? `/tmp/report_${componentId}.pdf` : '',
     collectionId,
     componentId,
     numPages: status === PdfStatus.Generated ? 6 : 0,

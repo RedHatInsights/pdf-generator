@@ -1,8 +1,6 @@
 import { apiLogger } from './logging';
 import PDFMerger from 'pdf-merger-js';
 import { store } from '../common/store';
-import os from 'os';
-import fs from 'fs';
 import { arrayBuffer as ArrayBuffer } from 'node:stream/consumers';
 import { PDFDocument, PDFPage, Color, ColorTypes } from 'pdf-lib';
 
@@ -46,11 +44,6 @@ const formatTimeToEnglish = (milliseconds: number): string => {
   )} ${largestUnit}`;
 };
 
-export type PdfEntry = {
-  status: string;
-  filepath: string;
-};
-
 export type PdfCollection = {
   [id: string]: PDFComponentGroup;
 };
@@ -63,7 +56,6 @@ export type PDFComponentGroup = {
 };
 export type PDFComponent = {
   status: PdfStatus;
-  filepath: string;
   collectionId: string;
   componentId: string;
   error?: string;
@@ -367,15 +359,8 @@ class PdfCache {
     }
     const buffer = await merger.saveAsBuffer();
     const completed = await addPageNumbers(new Uint8Array(buffer));
-    const path = `${os.tmpdir()}/${collectionId}`;
-    try {
-      await fs.promises.writeFile(path, completed);
-      apiLogger.debug(`${path} written to disk`);
-      await store.uploadPDF(collectionId, path);
-      apiLogger.debug(`${collectionId} written to s3`);
-    } finally {
-      fs.rmSync(path, { force: true });
-    }
+    await store.uploadPDF(collectionId, completed);
+    apiLogger.debug(`${collectionId} written to s3`);
   };
 }
 

@@ -396,16 +396,12 @@
         "description": "Status object for a single pdf component",
         "required": [
           "status",
-          "filepath",
           "collectionId",
           "componentId"
         ],
         "properties": {
           "status": {
             "$ref": "#/components/schemas/PdfStatus"
-          },
-          "filepath": {
-            "type": "string"
           },
           "collectionId": {
             "type": "string"
@@ -464,13 +460,11 @@
               {
                 "collectionId": "01197696-ca1b-4beb-80d2-6501126cb89e",
                 "status": "Generated",
-                "filepath": "/tmp/report_78584d8d-c5b9-444d-b2eb-b7ffc640d620.pdf",
                 "componentId": "78584d8d-c5b9-444d-b2eb-b7ffc640d620"
               },
               {
                 "collectionId": "01197696-ca1b-4beb-80d2-6501126cb89e",
                 "status": "Generated",
-                "filepath": "/tmp/report_99b81a67-a9f5-4a1e-82aa-1ef1840bce28.pdf",
                 "componentId": "99b81a67-a9f5-4a1e-82aa-1ef1840bce28"
               }
             ],

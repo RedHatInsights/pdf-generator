@@ -18,11 +18,11 @@ class StoreProxy implements PDFStorageService {
     }
   }
 
-  public async uploadPDF(id: string, path: string) {
+  public async uploadPDF(id: string, pdf: Uint8Array) {
     if (!this.store) {
       throw new Error('Store not initialized');
     }
-    return this.store.uploadPDF(id, path);
+    return this.store.uploadPDF(id, pdf);
   }
 
   public async downloadPDF(id: string) {

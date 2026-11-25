@@ -7,13 +7,13 @@ import { Readable } from 'stream';
  */
 export interface PDFStorageService {
   /**
-   * Uploads a PDF file to the configured storage.
+   * Uploads a PDF to the configured storage.
    *
    * @param id The unique identifier for the PDF file.
-   * @param path The local file path to the PDF to be uploaded.
+   * @param pdf The PDF's bytes.
    * @returns A Promise that resolves when the upload is complete.
    */
-  uploadPDF(id: string, path: string): Promise<void>;
+  uploadPDF(id: string, pdf: Uint8Array): Promise<void>;
 
   /**
    * Fetches a PDF file from storage.

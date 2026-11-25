@@ -69,7 +69,7 @@ docs/               # API docs, onboarding guides, OpenAPI spec
 3. **Kafka consumer group** — each pod uses `pdf-gen-<hostname>` as its group ID. New consumers skip historical messages.
 4. **Template error detection** — Puppeteer checks two DOM elements: `#crc-pdf-generator-err` (React app error) and `#report-error` (SSR rendering error). Both must be checked.
 5. **Proxy initialization** — the assets proxy is lazily initialized on first request. `hasProxy` flag prevents duplicate registration.
-6. **S3 upload failures** — caught and logged but don't crash the generation. The PDF may still be on local disk.
+6. **S3 upload failures** — fail the component, and the cluster retries it up to twice (`retryLimit: 2`). PDFs are uploaded from memory and never written to the pod's disk, so S3 holds the only copy.
 7. **v1 API deprecated** — `POST /v1/generate` returns 400. All new work should use v2 endpoints.
 8. **Chrome path in production** — differs from development. `CHROMIUM_PATH` in `src/browser/helpers.ts` resolves it based on `IS_PRODUCTION`.
 
