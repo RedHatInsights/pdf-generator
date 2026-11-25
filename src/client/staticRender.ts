@@ -27,9 +27,9 @@ export function renderStatically<Props extends object>(
   const container = document.createElement('div');
   const root = createRoot(container);
   try {
+    // Render now instead of on React's schedule, so the elements exist before
+    // they are copied. https://react.dev/reference/react-dom/flushSync
     flushSync(() => root.render(createElement(Template, props)));
-    // Runs the effects of that render, so what they write to the DOM is copied.
-    flushSync(() => undefined);
     const stillLoading = container.querySelector(`[${PDF_LOADING_ATTR}]`);
     if (!container.hasChildNodes() || stillLoading) {
       return undefined;

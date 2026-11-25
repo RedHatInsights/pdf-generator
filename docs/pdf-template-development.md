@@ -300,7 +300,7 @@ additionalData: {
 
 The generator builds your template once off-screen, copies the finished elements into the page and unmounts it. React creates the elements exactly as it does when it mounts the template, but none of your components stay alive while the report prints, which is a large part of the render time and memory of a report with thousands of table cells.
 
-Only the first render is printed. Its effects run, but a state update made after it (from an effect, a timer or a request) is not included, and the copy has no event handlers. Render everything from `asyncData` and `additionalData`.
+Only the first render is printed. Anything that happens after it (an effect, a timer, a request, a state update) is not included, and the copy has no event handlers. Render everything from `asyncData` and `additionalData`.
 
 The template renders on its own, so it only sees context from providers it renders itself. Code that measures the page sees an off-screen tree, and the contents of a `canvas` are not copied.
 

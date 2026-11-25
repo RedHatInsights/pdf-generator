@@ -139,12 +139,12 @@ describe('renderStatically', () => {
     });
   });
 
-  it('includes what the effects of the first render write to the DOM', async () => {
+  it('includes what the first render writes to the DOM as it commits', async () => {
     expect(
       await render<string>(
         `(h) => () => {
           const ref = React.useRef(null);
-          React.useEffect(() => { ref.current.dataset.measured = 'yes'; }, []);
+          React.useLayoutEffect(() => { ref.current.dataset.measured = 'yes'; }, []);
           return h('p', { ref }, 'text');
         }`,
         `(rendered) => rendered.firstElementChild.dataset.measured`,
