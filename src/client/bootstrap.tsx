@@ -6,7 +6,7 @@ import ScalprumProvider, {
   ScalprumComponentProps,
 } from '@scalprum/react-core';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { useEffect, useState } from 'react';
+import { ComponentType, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GeneratePayload } from '../common/types';
 import {
@@ -16,6 +16,7 @@ import {
 import { resolveInternalRouteKey } from '../common/integrationEndpoints';
 import FetchErrorFallback from './FetchErrorFallback';
 import { PDF_LOADING_ATTR, markPdfReady } from './pdfReady';
+import { renderStatically, usesStaticRender } from './staticRender';
 
 import 'react/jsx-runtime';
 import 'react-intl';
@@ -97,11 +98,39 @@ type FetchData = (
   options?: GeneratePayload['fetchDataParams'],
 ) => Promise<unknown>;
 
+type TemplateProps = {
+  asyncData: { data: unknown };
+  additionalData: Record<string, unknown> | undefined;
+};
+
 type AsyncState = {
   loading: boolean;
   error: unknown;
   data: unknown;
+  /** The template as static DOM; unset when it is mounted instead. */
+  rendered?: HTMLElement;
 };
+
+async function renderTemplateStatically(data: unknown) {
+  if (!usesStaticRender(state.additionalData)) {
+    return undefined;
+  }
+  try {
+    const Template = await getModule<ComponentType<TemplateProps>>(
+      state.scope,
+      state.module,
+      state.importName,
+    );
+    return renderStatically(Template, {
+      asyncData: { data },
+      additionalData: state.additionalData,
+    });
+  } catch (error) {
+    // Mounting reports a template that cannot load, as it always has.
+    console.error(error);
+    return undefined;
+  }
+}
 
 const MetadataWrapper = () => {
   const [asyncState, setAsyncState] = useState<AsyncState>({
@@ -136,13 +165,12 @@ const MetadataWrapper = () => {
             '(not on fetchDataParams)',
         })}`,
       );
-      if (!fn) {
-        setAsyncState({ loading: false, error: null, data: null });
-        return;
-      }
-      const data = await fn(createAxiosRequest, state.fetchDataParams);
+      const data = fn
+        ? await fn(createAxiosRequest, state.fetchDataParams)
+        : null;
+      const rendered = await renderTemplateStatically(data);
 
-      setAsyncState({ loading: false, error: null, data });
+      setAsyncState({ loading: false, error: null, data, rendered });
     } catch (error) {
       setAsyncState({ loading: false, error, data: null });
     }
@@ -151,7 +179,7 @@ const MetadataWrapper = () => {
     getFetchMetadata();
   }, []);
 
-  const { error, loading, data } = asyncState;
+  const { error, loading, data, rendered } = asyncState;
 
   // Data (or an error) is in. The generator takes it from here: it waits for
   // the template to mount and settle. Loading placeholders carry
@@ -168,6 +196,20 @@ const MetadataWrapper = () => {
 
   if (loading) {
     return <div {...{ [PDF_LOADING_ATTR]: '' }}>Loading...</div>;
+  }
+
+  if (rendered) {
+    // React owns only this element; the static DOM is moved into it once.
+    return (
+      <div
+        className={state.scope}
+        ref={(scopeElement) => {
+          if (scopeElement && rendered.hasChildNodes()) {
+            scopeElement.replaceChildren(...rendered.childNodes);
+          }
+        }}
+      />
+    );
   }
 
   const props: ScalprumComponentProps<

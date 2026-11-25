@@ -2,6 +2,7 @@ import 'pf-5-styles/patternfly.min.css';
 import 'pf-5-styles/patternfly-addons.css';
 import '@patternfly/patternfly/patternfly.min.css';
 import '@patternfly/patternfly/patternfly-addons.css';
+import './tables.css';
 import { markPdfPending, markPdfReady } from './pdfReady';
 
 // Tell the generator this page reports its own readiness (see pdfReady.ts).

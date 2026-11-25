@@ -1,0 +1,8 @@
+/*
+ * PatternFly positions every table cell, and Chrome prints each positioned box
+ * as its own layer, which is most of the print time on a large table.
+ * A cell that needs to be positioned sets `position` inline.
+ */
+table[class*='-c-table'] > tbody > tr > :is(td, th) {
+  position: static;
+}

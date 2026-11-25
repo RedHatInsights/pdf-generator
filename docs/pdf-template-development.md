@@ -295,3 +295,27 @@ additionalData: {
   printLayout: false,
 }
 ```
+
+### Static render
+
+The generator builds your template once off-screen, copies the finished elements into the page and unmounts it. React creates the elements exactly as it does when it mounts the template, but none of your components stay alive while the report prints, which is a large part of the render time and memory of a report with thousands of table cells.
+
+Only the first render is printed. Anything that happens after it (an effect, a timer, a request, a state update) is not included, and the copy has no event handlers. Render everything from `asyncData` and `additionalData`.
+
+The template renders on its own, so it only sees context from providers it renders itself. Code that measures the page sees an off-screen tree, and the contents of a `canvas` are not copied.
+
+The template is mounted on the page as before if it throws, renders nothing, or is still showing a placeholder marked with `data-pdf-loading`.
+
+If your template depends on something that happens after its first render, such as a lazy-loaded part or a chart that measures itself, opt out in `additionalData`:
+
+```js
+additionalData: {
+  staticRender: false,
+}
+```
+
+### Table cells
+
+PatternFly positions every table cell (`position: relative`), and Chrome prints each positioned box as its own layer. On large tables that is most of the print time, so the generator leaves body cells of PatternFly tables unpositioned.
+
+Nothing changes unless a cell holds an absolutely positioned child. If one of yours does, set `position: 'relative'` on that cell's `style`.
