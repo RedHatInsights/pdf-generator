@@ -8,7 +8,6 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
 } from '@aws-sdk/client-s3';
-import { readFile } from 'fs/promises';
 import * as https from 'https';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { PDFStorageService } from './types';
@@ -128,7 +127,7 @@ export class ObjectStore implements PDFStorageService {
     this.s3 = StorageClient();
   }
 
-  public async uploadPDF(id: string, path: string) {
+  public async uploadPDF(id: string, pdf: Uint8Array) {
     const bucket = config?.objectStore.buckets[0].name;
     apiLogger.debug(`Using bucket: ${bucket}`);
     const exists = await this.checkBucketExists(bucket);
@@ -136,14 +135,11 @@ export class ObjectStore implements PDFStorageService {
       await this.createBucket(bucket);
     }
 
-    // Read the file into a Buffer so the SDK can retry automatically
-    // (streams are consumed on first attempt and cannot be replayed)
-    const fileBuffer = await readFile(path);
-
+    // Bytes, not a stream, so a retry can resend the body.
     const uploadParams = {
       Bucket: bucket,
       Key: `${id}.pdf`,
-      Body: fileBuffer,
+      Body: pdf,
       ContentType: 'application/pdf',
     };
 

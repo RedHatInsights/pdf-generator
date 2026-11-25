@@ -250,7 +250,6 @@ export async function consumeMessages(topic: string) {
         }
         pdfCache.addToCollection(updateMessage.collectionId, {
           status: updateMessage.status,
-          filepath: updateMessage.filepath,
           collectionId: updateMessage.collectionId,
           componentId: updateMessage.componentId,
           numPages: updateMessage?.numPages || 0,

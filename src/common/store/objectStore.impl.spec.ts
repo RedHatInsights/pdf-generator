@@ -5,7 +5,6 @@ import {
 } from './objectStore.impl';
 import config from '../config';
 import { Readable } from 'stream';
-import fs from 'fs';
 import { apiLogger } from '../logging';
 
 describe('objectStore config', () => {
@@ -131,12 +130,9 @@ describe('ObjectStore.uploadPDF', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
       .mockResolvedValue(true);
-    jest
-      .spyOn(fs.promises, 'readFile')
-      .mockResolvedValue(Buffer.from('fake-pdf-content'));
     mockSend.mockResolvedValue({});
 
-    await objectStore.uploadPDF('test-id', '/tmp/test.pdf');
+    await objectStore.uploadPDF('test-id', Buffer.from('fake-pdf-content'));
 
     // Verify debug logs were called
     expect(debugSpy).toHaveBeenCalled();
@@ -148,6 +144,26 @@ describe('ObjectStore.uploadPDF', () => {
 
     // Verify we DO log the bucket name (positive control)
     expect(allLogCalls).toContain(config.objectStore.buckets[0].name);
+  });
+
+  it('uploads the bytes it is given', async () => {
+    jest
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn<ObjectStore, any>(objectStore, 'checkBucketExists')
+      .mockResolvedValue(true);
+    mockSend.mockResolvedValue({});
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+    await objectStore.uploadPDF('test-id', pdf);
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend.mock.calls[0][0].input).toEqual(
+      expect.objectContaining({
+        Key: 'test-id.pdf',
+        Body: pdf,
+        ContentType: 'application/pdf',
+      }),
+    );
   });
 });
 
